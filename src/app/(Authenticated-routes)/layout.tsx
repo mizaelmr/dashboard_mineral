@@ -18,6 +18,8 @@ import {
   DownOutlined,
 } from "@ant-design/icons";
 import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import type { MenuProps } from "antd";
 
 const { Sider, Content, Header } = Layout;
@@ -27,8 +29,25 @@ export default function AuthenticatedLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [selectedKey, setSelectedKey] = useState("inicio");
+  
+  // Determinar a chave selecionada baseada no pathname
+  const getSelectedKey = () => {
+    if (pathname?.includes("/clientes")) return "clientes";
+    if (pathname?.includes("/declarantes")) return "declarantes";
+    if (pathname?.includes("/licencas")) return "licencas";
+    if (pathname?.includes("/mineradoras")) return "mineradoras";
+    if (pathname?.includes("/processos")) return "processos";
+    if (pathname?.includes("/substancias")) return "substancias";
+    if (pathname?.includes("/certificados")) return "certificados";
+    if (pathname?.includes("/dados-empresa")) return "dados-empresa";
+    if (pathname?.includes("/dashboard")) return "inicio";
+    return "inicio";
+  };
+  
+  const [selectedKey, setSelectedKey] = useState(getSelectedKey());
 
   const userMenuItems: MenuProps["items"] = [
     {
@@ -48,42 +67,42 @@ export default function AuthenticatedLayout({
     {
       key: "inicio",
       icon: <HomeOutlined />,
-      label: <a href="#">Início</a>,
+      label: <Link href="/dashboard">Início</Link>,
     },
     {
       key: "clientes",
       icon: <TeamOutlined />,
-      label: <a href="#">Clientes</a>,
+      label: <Link href="/clientes">Clientes</Link>,
     },
     {
       key: "declarantes",
       icon: <UserOutlined />,
-      label: <a href="#">Declarantes</a>,
+      label: <Link href="/declarantes">Declarantes</Link>,
     },
     {
       key: "licencas",
       icon: <EnvironmentOutlined />,
-      label: <a href="#">Licenças</a>,
+      label: <Link href="/licencas">Licenças</Link>,
     },
     {
       key: "mineradoras",
       icon: <ToolOutlined />,
-      label: <a href="#">Mineradoras</a>,
+      label: <Link href="/mineradoras">Mineradoras</Link>,
     },
     {
       key: "processos",
       icon: <UnorderedListOutlined />,
-      label: <a href="#">Processos</a>,
+      label: <Link href="/processos">Processos</Link>,
     },
     {
       key: "substancias",
       icon: <ExperimentOutlined />,
-      label: <a href="#">Substâncias</a>,
+      label: <Link href="/substancias">Substâncias</Link>,
     },
     {
       key: "certificados",
       icon: <FileTextOutlined />,
-      label: <a href="#">Certificados</a>,
+      label: <Link href="/certificados">Certificados</Link>,
     },
     {
       key: "relatorios",
@@ -108,7 +127,7 @@ export default function AuthenticatedLayout({
         {
           key: "dados-empresa",
           icon: <BankOutlined />,
-          label: <a href="#">Dados Empresa</a>,
+          label: <Link href="/dados-empresa">Dados Empresa</Link>,
         },
         {
           key: "suporte",
@@ -183,7 +202,28 @@ export default function AuthenticatedLayout({
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menuItems}
-          onClick={({ key }) => setSelectedKey(key as string)}
+          onClick={({ key }) => {
+            setSelectedKey(key as string);
+            if (key === "clientes") {
+              router.push("/clientes");
+            } else if (key === "declarantes") {
+              router.push("/declarantes");
+            } else if (key === "licencas") {
+              router.push("/licencas");
+            } else if (key === "mineradoras") {
+              router.push("/mineradoras");
+            } else if (key === "processos") {
+              router.push("/processos");
+            } else if (key === "substancias") {
+              router.push("/substancias");
+            } else if (key === "certificados") {
+              router.push("/certificados");
+            } else if (key === "dados-empresa") {
+              router.push("/dados-empresa");
+            } else if (key === "inicio") {
+              router.push("/dashboard");
+            }
+          }}
           style={{ borderRight: 0 }}
         />
       </Sider>
