@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
 import { Button, Space, Input } from "antd";
 import { SearchOutlined, EyeOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
@@ -13,6 +14,7 @@ interface Licenca {
 }
 
 const LicencasPage: React.FC = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -123,8 +125,7 @@ const LicencasPage: React.FC = () => {
   };
 
   const handleAddLicense = () => {
-    console.log("Adicionar nova licença");
-    // Implementar lógica de adição
+    router.push("/licencas/addlicencas");
   };
 
   // Filtrar dados baseado na busca

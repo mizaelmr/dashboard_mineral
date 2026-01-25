@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
 import { Button, Space, Input } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
@@ -15,6 +16,7 @@ interface Certificado {
 }
 
 const CertificadosPage: React.FC = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -137,13 +139,11 @@ const CertificadosPage: React.FC = () => {
   ];
 
   const handleView = (record: Certificado) => {
-    console.log("Visualizar certificado:", record);
-    // Implementar lógica de visualização
+    router.push(`/certificados/view/${record.id}`);
   };
 
   const handleEdit = (record: Certificado) => {
-    console.log("Editar certificado:", record);
-    // Implementar lógica de edição
+    router.push(`/certificados/edit/${record.id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -153,8 +153,7 @@ const CertificadosPage: React.FC = () => {
   };
 
   const handleAdd = () => {
-    console.log("Adicionar novo certificado");
-    // Implementar lógica de adição
+    router.push("/certificados/addcertificados");
   };
 
   const handleSearch = (value: string) => {

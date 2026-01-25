@@ -1,16 +1,46 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, Button, Descriptions, Space } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 
+export interface DadosEmpresa {
+  nome: string;
+  razaoSocial: string;
+  cnpj: string;
+  ie: string;
+  cep: string;
+  endereco: string;
+  bairro: string;
+  numero: string;
+  complemento: string;
+  fone1: string;
+  fone2: string;
+  email: string;
+}
+
+// Dados mockados da empresa
+export const mockDadosEmpresa: DadosEmpresa = {
+  nome: "COOPERATIVA MINERAL DA BAHIA",
+  razaoSocial: "COOPERATIVA MINERAL DA BAHIA - CMB",
+  cnpj: "08.020.967/0001-47",
+  ie: "69.031.374-NO",
+  cep: "44770-000",
+  endereco: "RUA PETROLINA",
+  bairro: "SERRA DA CARNAIBA - PINDOBAÇU - BA",
+  numero: "215",
+  complemento: "Nada informado",
+  fone1: "(74) 99961-1561",
+  fone2: "",
+  email: "mail@mail.com",
+};
+
 const DadosEmpresaPage: React.FC = () => {
-  const [isEditing, setIsEditing] = useState(false);
+  const router = useRouter();
 
   const handleEdit = () => {
-    setIsEditing(true);
-    console.log("Editar dados da empresa");
-    // Implementar lógica de edição
+    router.push("/dados-empresa/edit");
   };
 
   return (
@@ -30,10 +60,6 @@ const DadosEmpresaPage: React.FC = () => {
           type="primary"
           icon={<EditOutlined />}
           onClick={handleEdit}
-          style={{
-            backgroundColor: "#13c2c2",
-            borderColor: "#13c2c2",
-          }}
         >
           Editar
         </Button>
@@ -44,25 +70,25 @@ const DadosEmpresaPage: React.FC = () => {
         <Card title="Dados" style={{ width: "100%" }}>
           <Descriptions column={1} bordered>
             <Descriptions.Item label="Nome">
-              COOPERATIVA MINERAL DA BAHIA
+              {mockDadosEmpresa.nome}
             </Descriptions.Item>
             <Descriptions.Item label="Razão Social">
-              COOPERATIVA MINERAL DA BAHIA - CMB
+              {mockDadosEmpresa.razaoSocial}
             </Descriptions.Item>
             <Descriptions.Item label="CNPJ">
-              08.020.967/0001-47
+              {mockDadosEmpresa.cnpj}
             </Descriptions.Item>
             <Descriptions.Item label="IE">
-              69.031.374-NO
+              {mockDadosEmpresa.ie}
             </Descriptions.Item>
             <Descriptions.Item label="Fone 1">
-              (74) 99961-1561
+              {mockDadosEmpresa.fone1}
             </Descriptions.Item>
             <Descriptions.Item label="Fone 2">
-              {""}
+              {mockDadosEmpresa.fone2 || ""}
             </Descriptions.Item>
             <Descriptions.Item label="E-mail">
-              ----------
+              {mockDadosEmpresa.email || "----------"}
             </Descriptions.Item>
           </Descriptions>
         </Card>
@@ -71,16 +97,16 @@ const DadosEmpresaPage: React.FC = () => {
         <Card title="Localização" style={{ width: "100%" }}>
           <Descriptions column={1} bordered>
             <Descriptions.Item label="Endereço">
-              RUA PETROLINA
+              {mockDadosEmpresa.endereco}
             </Descriptions.Item>
             <Descriptions.Item label="Número">
-              215
+              {mockDadosEmpresa.numero}
             </Descriptions.Item>
             <Descriptions.Item label="Bairro">
-              SERRA DA CARNAIBA - PINDOBAÇU - BA
+              {mockDadosEmpresa.bairro}
             </Descriptions.Item>
             <Descriptions.Item label="CEP">
-              44770-000
+              {mockDadosEmpresa.cep}
             </Descriptions.Item>
           </Descriptions>
         </Card>

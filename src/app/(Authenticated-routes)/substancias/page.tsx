@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
 import { Button, Space, Input } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
@@ -12,6 +13,7 @@ interface Substancia {
 }
 
 const SubstânciasPage: React.FC = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -83,13 +85,11 @@ const SubstânciasPage: React.FC = () => {
   ];
 
   const handleView = (record: Substancia) => {
-    console.log("Visualizar substância:", record);
-    // Implementar lógica de visualização
+    router.push(`/substancias/view/${record.id}`);
   };
 
   const handleEdit = (record: Substancia) => {
-    console.log("Editar substância:", record);
-    // Implementar lógica de edição
+    router.push(`/substancias/edit/${record.id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -99,8 +99,7 @@ const SubstânciasPage: React.FC = () => {
   };
 
   const handleAdd = () => {
-    console.log("Adicionar nova substância");
-    // Implementar lógica de adição
+    router.push("/substancias/addsubstancias");
   };
 
   const handleSearch = (value: string) => {
