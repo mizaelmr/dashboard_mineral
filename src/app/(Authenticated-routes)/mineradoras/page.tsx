@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
 import { Button, Space, Input } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
@@ -15,6 +16,7 @@ interface Mineradora {
 }
 
 const MineradorasPage: React.FC = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -132,13 +134,11 @@ const MineradorasPage: React.FC = () => {
   ];
 
   const handleView = (record: Mineradora) => {
-    console.log("Visualizar mineradora:", record);
-    // Implementar lógica de visualização
+    router.push(`/mineradoras/view/${record.id}`);
   };
 
   const handleEdit = (record: Mineradora) => {
-    console.log("Editar mineradora:", record);
-    // Implementar lógica de edição
+    router.push(`/mineradoras/edit/${record.id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -148,8 +148,7 @@ const MineradorasPage: React.FC = () => {
   };
 
   const handleAdd = () => {
-    console.log("Adicionar nova mineradora");
-    // Implementar lógica de adição
+    router.push("/mineradoras/addmineradoras");
   };
 
   const handleSearch = (value: string) => {

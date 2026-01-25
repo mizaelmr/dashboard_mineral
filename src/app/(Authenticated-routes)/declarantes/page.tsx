@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
 import { Button, Space, Input } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -19,6 +20,7 @@ interface Declarante {
 }
 
 const DeclarantesPage: React.FC = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -225,8 +227,7 @@ const DeclarantesPage: React.FC = () => {
   ];
 
   const handleEdit = (record: Declarante) => {
-    console.log("Editar declarante:", record);
-    // Implementar lógica de edição
+    router.push(`/declarantes/edit/${record.id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -236,8 +237,7 @@ const DeclarantesPage: React.FC = () => {
   };
 
   const handleAdd = () => {
-    console.log("Adicionar novo declarante");
-    // Implementar lógica de adição
+    router.push("/declarantes/adddeclarantes");
   };
 
   const handleSearch = (value: string) => {

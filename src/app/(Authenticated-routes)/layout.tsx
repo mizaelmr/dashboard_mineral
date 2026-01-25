@@ -17,7 +17,7 @@ import {
   CustomerServiceOutlined,
   DownOutlined,
 } from "@ant-design/icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { MenuProps } from "antd";
@@ -32,9 +32,11 @@ export default function AuthenticatedLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  
+
   // Determinar a chave selecionada baseada no pathname
   const getSelectedKey = () => {
+    if (pathname?.includes("/relatorios/clientes")) return "relatorio-clientes";
+    if (pathname?.includes("/relatorios/processos")) return "relatorio-processos";
     if (pathname?.includes("/clientes")) return "clientes";
     if (pathname?.includes("/declarantes")) return "declarantes";
     if (pathname?.includes("/licencas")) return "licencas";
@@ -46,8 +48,12 @@ export default function AuthenticatedLayout({
     if (pathname?.includes("/dashboard")) return "inicio";
     return "inicio";
   };
-  
+
   const [selectedKey, setSelectedKey] = useState(getSelectedKey());
+
+  useEffect(() => {
+    setSelectedKey(getSelectedKey());
+  }, [pathname]);
 
   const userMenuItems: MenuProps["items"] = [
     {
@@ -110,8 +116,12 @@ export default function AuthenticatedLayout({
       label: "Relatórios",
       children: [
         {
-          key: "relatorio-1",
-          label: <a href="#">Relatório 1</a>,
+          key: "relatorio-clientes",
+          label: <Link href="/relatorios/clientes">Clientes</Link>,
+        },
+        {
+          key: "relatorio-processos",
+          label: <Link href="/relatorios/processos">Processos</Link>,
         },
       ],
     },

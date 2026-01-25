@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
 import { Button, Space, Input } from "antd";
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import type { TableColumnType } from "antd";
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 
 interface Cliente {
   key: string;
@@ -19,6 +19,7 @@ interface Cliente {
 }
 
 const ClientesPage: React.FC = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -163,10 +164,15 @@ const ClientesPage: React.FC = () => {
     {
       title: "Ações",
       key: "acoes",
-      width: 80,
+      width: 120,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record)}
+          />
           <Button
             type="link"
             icon={<EditOutlined />}
@@ -184,9 +190,12 @@ const ClientesPage: React.FC = () => {
     },
   ];
 
+  const handleView = (record: Cliente) => {
+    router.push(`/clientes/view/${record.id}`);
+  };
+
   const handleEdit = (record: Cliente) => {
-    console.log("Editar cliente:", record);
-    // Implementar lógica de edição
+    router.push(`/clientes/edit/${record.id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -196,8 +205,7 @@ const ClientesPage: React.FC = () => {
   };
 
   const handleAdd = () => {
-    console.log("Adicionar novo cliente");
-    // Implementar lógica de adição
+    router.push("/clientes/addclientes");
   };
 
   const handleSearch = (value: string) => {

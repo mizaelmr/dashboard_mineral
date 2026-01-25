@@ -11,10 +11,12 @@
   "dependencies": {
     "@ant-design/icons": "6.x",
     "antd": "^6.2.1",
+    "html2pdf.js": "^0.14.0",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
+    "react-to-print": "^3.2.0",
     "styled-components": "^6.3.8"
   },
   "devDependencies": {
