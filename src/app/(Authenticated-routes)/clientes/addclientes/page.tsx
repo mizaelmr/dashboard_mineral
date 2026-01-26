@@ -1,27 +1,18 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { Button, message, Space } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
-
-interface ClienteFormValues {
-  nome: string;
-  cpf: string;
-  razaoSocial: string;
-  cnpj: string;
-  cep: string;
-  endereco: string;
-  complemento: string;
-  bairro: string;
-  numero: string;
-  cidade: string;
-  estado: string;
-  cel: string;
-  tel: string;
-  email: string;
-}
+import { createClient } from "../actions";
+import {
+  mapFormValuesToCreateDto,
+} from "@/types/client";
+import { clienteFormSchema, ClienteFormSchema } from "@/schemas/client.schema";
 
 const UFS: SelectOption[] = [
   { value: "AC", label: "Acre" },
@@ -77,7 +68,10 @@ const gridRow3Style: React.CSSProperties = {
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
 const AddClientesPage: React.FC = () => {
-  const { control, handleSubmit } = useForm<ClienteFormValues>({
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const { control, handleSubmit } = useForm<ClienteFormSchema>({
+    resolver: zodResolver(clienteFormSchema),
     defaultValues: {
       nome: "",
       cpf: "",
@@ -96,18 +90,58 @@ const AddClientesPage: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: ClienteFormValues) => {
-    console.log("Salvar cliente:", data);
-    // Implementar lógica de persistência
+  const handleBack = () => router.push("/clientes");
+  const handleCancel = () => router.push("/clientes");
+
+  const onSubmit = async (data: ClienteFormSchema) => {
+    setLoading(true);
+    try {
+      const createDto = mapFormValuesToCreateDto(data);
+      await createClient(createDto);
+      message.success("Client created successfully");
+      router.push("/clientes");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Failed to create client"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div>
-      <h1 style={{ margin: "0 0 24px", fontSize: "24px", fontWeight: 600 }}>
-        Novo Cliente
-      </h1>
-
       <form onSubmit={handleSubmit(onSubmit)}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Button
+              type="default"
+              htmlType="button"
+              icon={<ArrowLeftOutlined />}
+              onClick={handleBack}
+            >
+              Voltar
+            </Button>
+            <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 600 }}>
+              Novo Cliente
+            </h1>
+          </div>
+          <Space size="middle">
+            <Button type="default" htmlType="button" onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Salvar
+            </Button>
+          </Space>
+        </div>
         {/* Seção Dados */}
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
@@ -119,7 +153,6 @@ const AddClientesPage: React.FC = () => {
               control={control}
               label="*Nome:"
               placeholder="Digite o nome do cliente"
-              rules={{ required: "Nome é obrigatório" }}
               style={inputFullStyle}
             />
             <HookFormInput
@@ -242,13 +275,6 @@ const AddClientesPage: React.FC = () => {
             />
           </div>
         </section>
-
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
-          Salvar
-        </Button>
       </form>
     </div>
   );

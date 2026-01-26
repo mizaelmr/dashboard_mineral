@@ -1,88 +1,60 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { debounce } from "lodash";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input } from "antd";
+import { Button, Space, Input, message } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
-
-interface Cliente {
-  key: string;
-  id: string;
-  nome: string;
-  cpfCnpj: string;
-  email: string;
-  telefone: string;
-  cidade: string;
-  estado: string;
-  status: "ativo" | "inativo";
-}
+import { getAllClients, searchClients, deleteClient } from "./actions";
+import { ClienteTableRow, mapClientToTableRow } from "@/types/client";
+import { formatPhone } from "@/utils/formatPhone";
 
 const ClientesPage: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [searchText, setSearchText] = useState("");
+  const [dataSource, setDataSource] = useState<ClienteTableRow[]>([]);
 
-  // Dados de exemplo
-  const [dataSource, setDataSource] = useState<Cliente[]>([
-    {
-      key: "1",
-      id: "1",
-      nome: "João Silva",
-      cpfCnpj: "123.456.789-00",
-      email: "joao.silva@email.com",
-      telefone: "(71) 99999-9999",
-      cidade: "Salvador",
-      estado: "BA",
-      status: "ativo",
-    },
-    {
-      key: "2",
-      id: "2",
-      nome: "Maria Santos",
-      cpfCnpj: "987.654.321-00",
-      email: "maria.santos@email.com",
-      telefone: "(71) 88888-8888",
-      cidade: "Feira de Santana",
-      estado: "BA",
-      status: "ativo",
-    },
-    {
-      key: "3",
-      id: "3",
-      nome: "Empresa Mineração LTDA",
-      cpfCnpj: "12.345.678/0001-90",
-      email: "contato@mineracao.com.br",
-      telefone: "(71) 77777-7777",
-      cidade: "Vitória da Conquista",
-      estado: "BA",
-      status: "ativo",
-    },
-    {
-      key: "4",
-      id: "4",
-      nome: "Pedro Oliveira",
-      cpfCnpj: "111.222.333-44",
-      email: "pedro.oliveira@email.com",
-      telefone: "(71) 66666-6666",
-      cidade: "Ilhéus",
-      estado: "BA",
-      status: "inativo",
-    },
-    {
-      key: "5",
-      id: "5",
-      nome: "Ana Costa",
-      cpfCnpj: "555.666.777-88",
-      email: "ana.costa@email.com",
-      telefone: "(71) 55555-5555",
-      cidade: "Juazeiro",
-      estado: "BA",
-      status: "ativo",
-    },
-  ]);
+  const loadClients = useCallback(async () => {
+    setLoading(true);
+    try {
+      const clients = await getAllClients();
+      const mappedClients = clients.map(mapClientToTableRow);
+      setDataSource(mappedClients);
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Failed to load clients"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const columns: TableColumn<Cliente>[] = [
+  useEffect(() => {
+    loadClients();
+  }, [loadClients]);
+
+  const handleView = (record: ClienteTableRow) => {
+    router.push(`/clientes/view/${record.id}`);
+  };
+
+  const handleEdit = (record: ClienteTableRow) => {
+    router.push(`/clientes/edit/${record.id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteClient(Number(id));
+      message.success("Client deleted successfully");
+      await loadClients();
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Failed to delete client"
+      );
+    }
+  };
+
+  const columns: TableColumn<ClienteTableRow>[] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -113,53 +85,11 @@ const ClientesPage: React.FC = () => {
       ellipsis: true,
     },
     {
-      title: "Telefone",
-      dataIndex: "telefone",
-      key: "telefone",
-      width: 150,
-    },
-    {
-      title: "Cidade",
-      dataIndex: "cidade",
-      key: "cidade",
-      width: 150,
-      sorter: (a, b) => a.cidade.localeCompare(b.cidade),
-    },
-    {
-      title: "Estado",
-      dataIndex: "estado",
-      key: "estado",
-      width: 100,
-      filters: [
-        { text: "BA", value: "BA" },
-        { text: "SP", value: "SP" },
-        { text: "RJ", value: "RJ" },
-      ],
-      onFilter: (value, record) => record.estado === value,
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 80,
-      filters: [
-        { text: "Ativo", value: "ativo" },
-        { text: "Inativo", value: "inativo" },
-      ],
-      onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <span
-          style={{
-            padding: "4px 8px",
-            borderRadius: "4px",
-            backgroundColor: status === "ativo" ? "#f6ffed" : "#fff2e8",
-            color: status === "ativo" ? "#52c41a" : "#fa8c16",
-            fontWeight: 500,
-          }}
-        >
-          {status === "ativo" ? "Ativo" : "Inativo"}
-        </span>
-      ),
+      title: "Celular",
+      dataIndex: "celular",
+      key: "celular",
+      width: 130,
+      render: (text: string) => formatPhone(text),
     },
     {
       title: "Ações",
@@ -190,35 +120,43 @@ const ClientesPage: React.FC = () => {
     },
   ];
 
-  const handleView = (record: Cliente) => {
-    router.push(`/clientes/view/${record.id}`);
-  };
-
-  const handleEdit = (record: Cliente) => {
-    router.push(`/clientes/edit/${record.id}`);
-  };
-
-  const handleDelete = (id: string) => {
-    console.log("Excluir cliente:", id);
-    // Implementar lógica de exclusão
-    setDataSource(dataSource.filter((item) => item.id !== id));
-  };
-
   const handleAdd = () => {
     router.push("/clientes/addclientes");
   };
 
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    // Implementar lógica de busca
-  };
+  const performSearch = useCallback(async (value: string) => {
+    setLoading(true);
+    try {
+      if (value.trim()) {
+        const clients = await searchClients({ name: value.trim() });
+        const mappedClients = clients.map(mapClientToTableRow);
+        setDataSource(mappedClients);
+      } else {
+        await loadClients();
+      }
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Failed to search clients"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [loadClients]);
 
-  // Filtrar dados baseado na busca
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchText.toLowerCase())
-    )
+  const debouncedSearch = useMemo(
+    () => debounce(performSearch, 500),
+    [performSearch]
   );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  const handleSearch = (value: string) => {
+    debouncedSearch(value);
+  };
 
   return (
     <div>
@@ -251,9 +189,9 @@ const ClientesPage: React.FC = () => {
         </Space>
       </div>
 
-      <Table<Cliente>
+      <Table<ClienteTableRow>
         columns={columns}
-        dataSource={filteredData}
+        dataSource={dataSource}
         loading={loading}
         rowKey="id"
         pagination={{
@@ -261,7 +199,7 @@ const ClientesPage: React.FC = () => {
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} clientes`,
         }}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 1180 }}
         bordered
       />
     </div>

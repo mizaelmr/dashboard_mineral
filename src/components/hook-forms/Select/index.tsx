@@ -45,7 +45,7 @@ function HookFormSelectInner<
               options={options}
               ref={ref}
               id={name}
-              value={fieldProps.value}
+              value={fieldProps.value === "" || fieldProps.value == null ? undefined : fieldProps.value}
               onChange={fieldProps.onChange}
               onBlur={fieldProps.onBlur}
               status={fieldState.invalid ? "error" : undefined}

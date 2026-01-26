@@ -24,8 +24,8 @@ export const Title = styled(Typography)`
     font-weight: 500;
 `;
 
-export const InputLogin = styled(Input)`
-  /* width: 100%; */
+export const InputLogin = styled(Input)<{ type?: string }>`
+  width: 100%;
 `;
 
 export const ButtonLogin = styled(Button)`

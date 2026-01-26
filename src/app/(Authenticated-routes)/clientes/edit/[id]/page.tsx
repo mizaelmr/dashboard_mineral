@@ -3,38 +3,17 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, message, Space } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
-
-interface ClienteFormValues {
-  nome: string;
-  cpf: string;
-  razaoSocial: string;
-  cnpj: string;
-  cep: string;
-  endereco: string;
-  complemento: string;
-  bairro: string;
-  numero: string;
-  cidade: string;
-  estado: string;
-  cel: string;
-  tel: string;
-  email: string;
-}
-
-interface Cliente {
-  key: string;
-  id: string;
-  nome: string;
-  cpfCnpj: string;
-  email: string;
-  telefone: string;
-  cidade: string;
-  estado: string;
-  status: "ativo" | "inativo";
-}
+import { getClientById, updateClient } from "../../actions";
+import {
+  mapClientToFormValues,
+  mapFormValuesToUpdateDto,
+} from "@/types/client";
+import { clienteFormSchema, ClienteFormSchema } from "@/schemas/client.schema";
 
 const UFS: SelectOption[] = [
   { value: "AC", label: "Acre" },
@@ -89,95 +68,15 @@ const gridRow3Style: React.CSSProperties = {
 
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
-// Dados de exemplo (mesmos da lista de clientes)
-const mockClientes: Cliente[] = [
-  {
-    key: "1",
-    id: "1",
-    nome: "João Silva",
-    cpfCnpj: "123.456.789-00",
-    email: "joao.silva@email.com",
-    telefone: "(71) 99999-9999",
-    cidade: "Salvador",
-    estado: "BA",
-    status: "ativo",
-  },
-  {
-    key: "2",
-    id: "2",
-    nome: "Maria Santos",
-    cpfCnpj: "987.654.321-00",
-    email: "maria.santos@email.com",
-    telefone: "(71) 88888-8888",
-    cidade: "Feira de Santana",
-    estado: "BA",
-    status: "ativo",
-  },
-  {
-    key: "3",
-    id: "3",
-    nome: "Empresa Mineração LTDA",
-    cpfCnpj: "12.345.678/0001-90",
-    email: "contato@mineracao.com.br",
-    telefone: "(71) 77777-7777",
-    cidade: "Vitória da Conquista",
-    estado: "BA",
-    status: "ativo",
-  },
-  {
-    key: "4",
-    id: "4",
-    nome: "Pedro Oliveira",
-    cpfCnpj: "111.222.333-44",
-    email: "pedro.oliveira@email.com",
-    telefone: "(71) 66666-6666",
-    cidade: "Ilhéus",
-    estado: "BA",
-    status: "inativo",
-  },
-  {
-    key: "5",
-    id: "5",
-    nome: "Ana Costa",
-    cpfCnpj: "555.666.777-88",
-    email: "ana.costa@email.com",
-    telefone: "(71) 55555-5555",
-    cidade: "Juazeiro",
-    estado: "BA",
-    status: "ativo",
-  },
-];
-
-// Função para mapear Cliente para ClienteFormValues
-const mapClienteToFormValues = (cliente: Cliente): ClienteFormValues => {
-  // Verificar se cpfCnpj é CPF ou CNPJ baseado na presença de "/"
-  const isCNPJ = cliente.cpfCnpj.includes("/");
-  
-  return {
-    nome: cliente.nome || "",
-    cpf: isCNPJ ? "" : cliente.cpfCnpj || "",
-    razaoSocial: isCNPJ ? cliente.nome : "",
-    cnpj: isCNPJ ? cliente.cpfCnpj : "",
-    cep: "",
-    endereco: "",
-    complemento: "",
-    bairro: "",
-    numero: "",
-    cidade: cliente.cidade || "",
-    estado: cliente.estado || "",
-    cel: cliente.telefone || "",
-    tel: "",
-    email: cliente.email || "",
-  };
-};
-
 const EditClientePage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const { control, handleSubmit, reset } = useForm<ClienteFormValues>({
+  const { control, handleSubmit, reset } = useForm<ClienteFormSchema>({
+    resolver: zodResolver(clienteFormSchema),
     defaultValues: {
       nome: "",
       cpf: "",
@@ -197,33 +96,51 @@ const EditClientePage: React.FC = () => {
   });
 
   useEffect(() => {
-    // Simular busca de dados do cliente
-    const fetchClienteData = () => {
-      setLoading(true);
-      
-      // Buscar cliente do array de exemplo
-      const cliente = mockClientes.find((c) => c.id === id);
-      
-      if (cliente) {
-        // Mapear dados do cliente para o formato do formulário
-        const formData = mapClienteToFormValues(cliente);
-        // Resetar formulário com os dados do cliente
-        reset(formData);
+    const fetchClienteData = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
       }
-      
-      setLoading(false);
+
+      setLoading(true);
+      try {
+        const client = await getClientById(Number(id));
+        const formData = mapClientToFormValues(client) as ClienteFormSchema;
+        reset(formData);
+      } catch (error) {
+        message.error(
+          error instanceof Error ? error.message : "Failed to load client"
+        );
+        router.push("/clientes");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (id) {
-      fetchClienteData();
-    }
-  }, [id, reset]);
+    fetchClienteData();
+  }, [id, reset, router]);
 
-  const onSubmit = (data: ClienteFormValues) => {
-    console.log("Atualizar cliente:", { id, ...data });
-    // Implementar lógica de atualização
-    // Após salvar, redirecionar para lista de clientes
-    router.push("/clientes");
+  const handleBack = () => router.push("/clientes");
+  const handleCancel = () => router.push("/clientes");
+
+  const onSubmit = async (data: ClienteFormSchema) => {
+    if (!id) {
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const updateDto = mapFormValuesToUpdateDto(data);
+      await updateClient(Number(id), updateDto);
+      message.success("Client updated successfully");
+      router.push("/clientes");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Failed to update client"
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -232,11 +149,37 @@ const EditClientePage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ margin: "0 0 24px", fontSize: "24px", fontWeight: 600 }}>
-        Editar Cliente
-      </h1>
-
       <form onSubmit={handleSubmit(onSubmit)}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Button
+              type="default"
+              htmlType="button"
+              icon={<ArrowLeftOutlined />}
+              onClick={handleBack}
+            >
+              Voltar
+            </Button>
+            <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 600 }}>
+              Editar Cliente
+            </h1>
+          </div>
+          <Space size="middle">
+            <Button type="default" htmlType="button" onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button type="primary" htmlType="submit" loading={submitting}>
+              Atualizar
+            </Button>
+          </Space>
+        </div>
         {/* Seção Dados */}
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
@@ -248,7 +191,6 @@ const EditClientePage: React.FC = () => {
               control={control}
               label="*Nome:"
               placeholder="Digite o nome do cliente"
-              rules={{ required: "Nome é obrigatório" }}
               style={inputFullStyle}
             />
             <HookFormInput
@@ -371,13 +313,6 @@ const EditClientePage: React.FC = () => {
             />
           </div>
         </section>
-
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
-          Atualizar
-        </Button>
       </form>
     </div>
   );
