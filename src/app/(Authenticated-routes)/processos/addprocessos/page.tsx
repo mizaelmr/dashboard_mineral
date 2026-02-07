@@ -1,9 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { HookFormInput } from "@/components/hook-forms";
+import { createProcess } from "../actions";
+import { cleanLowerValue } from "@/utils/cleanLowerValue";
 
 interface ProcessoFormValues {
   nome: string;
@@ -28,7 +31,18 @@ const gridRow2Style: React.CSSProperties = {
 
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
+function parseHectares(value: string): number | string | undefined {
+  if (value == null || value.trim() === "") return undefined;
+  const normalized = value.trim().replace(",", ".");
+  const num = parseFloat(normalized);
+  if (!Number.isNaN(num)) return num;
+  return normalized;
+}
+
 const AddProcessosPage: React.FC = () => {
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+
   const { control, handleSubmit } = useForm<ProcessoFormValues>({
     defaultValues: {
       nome: "",
@@ -38,9 +52,25 @@ const AddProcessosPage: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: ProcessoFormValues) => {
-    console.log("Salvar processo:", data);
-    // Implementar lógica de persistência
+  const onSubmit = async (data: ProcessoFormValues) => {
+    setSubmitting(true);
+    try {
+      await createProcess({
+        number: cleanLowerValue(data.numero) ?? "",
+        name: cleanLowerValue(data.nome) ?? undefined,
+        hectares: parseHectares(data.hectares),
+        observation:
+          data.observacao?.trim() === "" ? undefined : data.observacao?.trim(),
+      });
+      message.success("Processo cadastrado com sucesso.");
+      router.push("/processos");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao cadastrar processo."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -92,10 +122,7 @@ const AddProcessosPage: React.FC = () => {
           </div>
         </section>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
+        <Button type="primary" htmlType="submit" loading={submitting}>
           Salvar
         </Button>
       </form>

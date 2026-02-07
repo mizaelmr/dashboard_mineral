@@ -1,54 +1,81 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input } from "antd";
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
-
-interface Processo {
-  key: string;
-  id: string;
-  nome: string;
-  numero: string;
-  hectares: string;
-  observacao: string;
-}
+import { Button, Space, Input, message } from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import {
+  getAllProcesses,
+  deleteProcess,
+} from "./actions";
+import {
+  ProcessTableRow,
+  mapProcessToTableRow,
+} from "@/types/process";
+import { capitalizeWords } from "@/utils/capitalize";
 
 const ProcessosPage: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [dataSource, setDataSource] = useState<ProcessTableRow[]>([]);
 
-  // Dados de exemplo
-  const [dataSource, setDataSource] = useState<Processo[]>([
-    {
-      key: "1",
-      id: "1",
-      nome: "871.860/2006",
-      numero: "871.860/2006",
-      hectares: "894,00",
-      observacao: "Não informado",
-    },
-    {
-      key: "2",
-      id: "2",
-      nome: "871.861/2006",
-      numero: "871.861/2006",
-      hectares: "923,25",
-      observacao: "Não informado",
-    },
-    {
-      key: "3",
-      id: "3",
-      nome: "873.335/2006",
-      numero: "873.335/2006",
-      hectares: "871,51",
-      observacao: "Não informado",
-    },
-  ]);
+  const loadProcesses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const processes = await getAllProcesses();
+      setDataSource(processes.map(mapProcessToTableRow));
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao carregar processos."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const columns: TableColumn<Processo>[] = [
+  useEffect(() => {
+    loadProcesses();
+  }, [loadProcesses]);
+
+  const handleView = (record: ProcessTableRow) => {
+    router.push(`/processos/view/${record.id}`);
+  };
+
+  const handleEdit = (record: ProcessTableRow) => {
+    router.push(`/processos/edit/${record.id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteProcess(Number(id));
+      message.success("Processo excluído com sucesso.");
+      await loadProcesses();
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao excluir processo."
+      );
+    }
+  };
+
+  const handleAdd = () => {
+    router.push("/processos/addprocessos");
+  };
+
+  const filteredData = dataSource.filter((item) =>
+    Object.values(item).some((val) =>
+      String(val).toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
+
+  const columns: TableColumn<ProcessTableRow>[] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -63,6 +90,7 @@ const ProcessosPage: React.FC = () => {
       key: "nome",
       width: 200,
       sorter: (a, b) => a.nome.localeCompare(b.nome),
+      render: (text) => <strong>{capitalizeWords(text)}</strong>,
     },
     {
       title: "Número",
@@ -77,9 +105,9 @@ const ProcessosPage: React.FC = () => {
       key: "hectares",
       width: 150,
       sorter: (a, b) => {
-        const aValue = parseFloat(a.hectares.replace(",", "."));
-        const bValue = parseFloat(b.hectares.replace(",", "."));
-        return aValue - bValue;
+        const aVal = parseFloat(String(a.hectares).replace(",", ".")) || 0;
+        const bVal = parseFloat(String(b.hectares).replace(",", ".")) || 0;
+        return aVal - bVal;
       },
     },
     {
@@ -87,6 +115,7 @@ const ProcessosPage: React.FC = () => {
       dataIndex: "observacao",
       key: "observacao",
       width: 200,
+      render: (text) => text || "-",
     },
     {
       title: "Ações",
@@ -116,36 +145,6 @@ const ProcessosPage: React.FC = () => {
     },
   ];
 
-  const handleView = (record: Processo) => {
-    router.push(`/processos/view/${record.id}`);
-  };
-
-  const handleEdit = (record: Processo) => {
-    router.push(`/processos/edit/${record.id}`);
-  };
-
-  const handleDelete = (id: string) => {
-    console.log("Excluir processo:", id);
-    // Implementar lógica de exclusão
-    setDataSource(dataSource.filter((item) => item.id !== id));
-  };
-
-  const handleAdd = () => {
-    router.push("/processos/addprocessos");
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    // Implementar lógica de busca
-  };
-
-  // Filtrar dados baseado na busca
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
-
   return (
     <div>
       <div
@@ -165,19 +164,15 @@ const ProcessosPage: React.FC = () => {
             prefix={<SearchOutlined />}
             allowClear
             style={{ width: 300 }}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAdd}
-          >
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
             Novo Processo
           </Button>
         </Space>
       </div>
 
-      <Table<Processo>
+      <Table<ProcessTableRow>
         columns={columns}
         dataSource={filteredData}
         loading={loading}

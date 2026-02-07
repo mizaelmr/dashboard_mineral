@@ -1,54 +1,83 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input } from "antd";
+import { Button, Space, Input, message } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
-
-interface Mineradora {
-  key: string;
-  id: string;
-  nome: string;
-  processo: string;
-  concessao: string;
-  observacao: string;
-}
+import {
+  getAllMiningSites,
+  getAllProcesses,
+  deleteMiningSite,
+} from "./actions";
+import {
+  MiningSiteTableRow,
+  mapMiningSiteToTableRow,
+} from "@/types/mining-site";
+import { capitalizeWords } from "@/utils/capitalize";
 
 const MineradorasPage: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [dataSource, setDataSource] = useState<MiningSiteTableRow[]>([]);
 
-  // Dados de exemplo
-  const [dataSource, setDataSource] = useState<Mineradora[]>([
-    {
-      key: "2",
-      id: "2",
-      nome: "MINAS DIVERSAS (871.861/2006)",
-      processo: "871.861/2006",
-      concessao: "",
-      observacao: "ATIVA",
-    },
-    {
-      key: "3",
-      id: "3",
-      nome: "MINAS DIVERSAS (871.860/2006)",
-      processo: "871.860/2006",
-      concessao: "",
-      observacao: "ATIVA",
-    },
-    {
-      key: "4",
-      id: "4",
-      nome: "MINAS DIVERSAS (873.335/2006)",
-      processo: "873.335/2006",
-      concessao: "",
-      observacao: "ATIVA",
-    },
-  ]);
+  const loadMiningSites = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [sites, processes] = await Promise.all([
+        getAllMiningSites(),
+        getAllProcesses(),
+      ]);
+      const byId: Record<number, string> = {};
+      processes.forEach((p) => {
+        byId[p.id] = p.number ?? "";
+      });
+      setDataSource(sites.map((s) => mapMiningSiteToTableRow(s, byId)));
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao carregar mineradoras."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const columns: TableColumn<Mineradora>[] = [
+  useEffect(() => {
+    loadMiningSites();
+  }, [loadMiningSites]);
+
+  const handleView = (record: MiningSiteTableRow) => {
+    router.push(`/mineradoras/view/${record.id}`);
+  };
+
+  const handleEdit = (record: MiningSiteTableRow) => {
+    router.push(`/mineradoras/edit/${record.id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMiningSite(Number(id));
+      message.success("Mineradora excluída com sucesso.");
+      await loadMiningSites();
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao excluir mineradora."
+      );
+    }
+  };
+
+  const handleAdd = () => {
+    router.push("/mineradoras/addmineradoras");
+  };
+
+  const filteredData = dataSource.filter((item) =>
+    Object.values(item).some((val) =>
+      String(val).toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
+
+  const columns: TableColumn<MiningSiteTableRow>[] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -58,19 +87,12 @@ const MineradorasPage: React.FC = () => {
       hidden: true,
     },
     {
-      title: "#",
-      dataIndex: "id",
-      key: "numero",
-      width: 80,
-      hidden: true,
-      sorter: (a, b) => parseInt(a.id) - parseInt(b.id),
-    },
-    {
       title: "Nome",
       dataIndex: "nome",
       key: "nome",
       width: 300,
       sorter: (a, b) => a.nome.localeCompare(b.nome),
+      render: (text) => <strong>{capitalizeWords(text)}</strong>,
     },
     {
       title: "Processo",
@@ -96,12 +118,13 @@ const MineradorasPage: React.FC = () => {
           style={{
             padding: "4px 8px",
             borderRadius: "4px",
-            backgroundColor: observacao === "ATIVA" ? "#f6ffed" : "#fff2e8",
-            color: observacao === "ATIVA" ? "#52c41a" : "#fa8c16",
+            backgroundColor:
+              observacao?.toUpperCase() === "ATIVA" ? "#f6ffed" : "#fff2e8",
+            color: observacao?.toUpperCase() === "ATIVA" ? "#52c41a" : "#fa8c16",
             fontWeight: 500,
           }}
         >
-          {observacao}
+          {observacao || "-"}
         </span>
       ),
     },
@@ -133,36 +156,6 @@ const MineradorasPage: React.FC = () => {
     },
   ];
 
-  const handleView = (record: Mineradora) => {
-    router.push(`/mineradoras/view/${record.id}`);
-  };
-
-  const handleEdit = (record: Mineradora) => {
-    router.push(`/mineradoras/edit/${record.id}`);
-  };
-
-  const handleDelete = (id: string) => {
-    console.log("Excluir mineradora:", id);
-    // Implementar lógica de exclusão
-    setDataSource(dataSource.filter((item) => item.id !== id));
-  };
-
-  const handleAdd = () => {
-    router.push("/mineradoras/addmineradoras");
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    // Implementar lógica de busca
-  };
-
-  // Filtrar dados baseado na busca
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
-
   return (
     <div>
       <div
@@ -182,7 +175,7 @@ const MineradorasPage: React.FC = () => {
             prefix={<SearchOutlined />}
             allowClear
             style={{ width: 300 }}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
           />
           <Button
             type="primary"
@@ -194,7 +187,7 @@ const MineradorasPage: React.FC = () => {
         </Space>
       </div>
 
-      <Table<Mineradora>
+      <Table<MiningSiteTableRow>
         columns={columns}
         dataSource={filteredData}
         loading={loading}

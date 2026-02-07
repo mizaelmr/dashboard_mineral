@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { stripDocument } from '@/utils/documents';
 
 export const clienteFormSchema = z
   .object({
@@ -18,10 +19,10 @@ export const clienteFormSchema = z
     email: z.string().min(1, 'Email é obrigatório').email('Email inválido'),
   })
   .superRefine((data, ctx) => {
-    const cpf = data.cpf?.trim() || '';
-    const cnpj = data.cnpj?.trim() || '';
-    
-    if (cpf.length === 0 && cnpj.length === 0) {
+    const cpfDigits = stripDocument(data.cpf);
+    const cnpjDigits = stripDocument(data.cnpj);
+
+    if (cpfDigits.length === 0 && cnpjDigits.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'CPF ou CNPJ é obrigatório',
@@ -29,7 +30,23 @@ export const clienteFormSchema = z
       });
     }
 
-    if (cnpj.length > 0) {
+    if (cpfDigits.length > 0 && cpfDigits.length !== 11) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CPF deve ter 11 dígitos',
+        path: ['cpf'],
+      });
+    }
+
+    if (cnpjDigits.length > 0 && cnpjDigits.length !== 14) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CNPJ deve ter 14 dígitos',
+        path: ['cnpj'],
+      });
+    }
+
+    if (cnpjDigits.length > 0) {
       const razaoSocial = data.razaoSocial?.trim() || '';
       if (razaoSocial.length === 0) {
         ctx.addIssue({

@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { HookFormInput } from "@/components/hook-forms";
+import { getProcessById, updateProcess } from "../../actions";
+import { cleanLowerValue } from "@/utils/cleanLowerValue";
 
 interface ProcessoFormValues {
   nome: string;
@@ -12,43 +14,6 @@ interface ProcessoFormValues {
   hectares: string;
   observacao: string;
 }
-
-interface Processo {
-  key: string;
-  id: string;
-  nome: string;
-  numero: string;
-  hectares: string;
-  observacao: string;
-}
-
-// Dados de exemplo (mesmos da lista de processos)
-const mockProcessos: Processo[] = [
-  {
-    key: "1",
-    id: "1",
-    nome: "871.860/2006",
-    numero: "871.860/2006",
-    hectares: "894,00",
-    observacao: "Não informado",
-  },
-  {
-    key: "2",
-    id: "2",
-    nome: "871.861/2006",
-    numero: "871.861/2006",
-    hectares: "923,25",
-    observacao: "Não informado",
-  },
-  {
-    key: "3",
-    id: "3",
-    nome: "873.335/2006",
-    numero: "873.335/2006",
-    hectares: "871,51",
-    observacao: "Não informado",
-  },
-];
 
 const sectionStyle: React.CSSProperties = {
   backgroundColor: "#fafafa",
@@ -66,15 +31,13 @@ const gridRow2Style: React.CSSProperties = {
 
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
-// Função para mapear Processo para ProcessoFormValues
-const mapProcessoToFormValues = (processo: Processo): ProcessoFormValues => {
-  return {
-    nome: processo.nome || "",
-    numero: processo.numero || "",
-    hectares: processo.hectares || "",
-    observacao: processo.observacao || "",
-  };
-};
+function parseHectares(value: string): number | string | undefined {
+  if (value == null || value.trim() === "") return undefined;
+  const normalized = value.trim().replace(",", ".");
+  const num = parseFloat(normalized);
+  if (!Number.isNaN(num)) return num;
+  return normalized;
+}
 
 const EditProcessoPage: React.FC = () => {
   const params = useParams();
@@ -92,33 +55,43 @@ const EditProcessoPage: React.FC = () => {
   });
 
   useEffect(() => {
-    // Simular busca de dados do processo
-    const fetchProcessoData = () => {
-      setLoading(true);
-      
-      // Buscar processo do array de exemplo
-      const processo = mockProcessos.find((p) => p.id === id);
-      
-      if (processo) {
-        // Mapear dados do processo para o formato do formulário
-        const formData = mapProcessoToFormValues(processo);
-        // Resetar formulário com os dados do processo
-        reset(formData);
-      }
-      
-      setLoading(false);
+    if (!id) return;
+    let cancelled = false;
+    setLoading(true);
+    getProcessById(Number(id))
+      .then((process) => {
+        if (cancelled || !process) return;
+        reset({
+          nome: process.name ?? "",
+          numero: process.number ?? "",
+          hectares: process.hectares ?? "",
+          observacao: process.observation ?? "",
+        });
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-
-    if (id) {
-      fetchProcessoData();
-    }
   }, [id, reset]);
 
-  const onSubmit = (data: ProcessoFormValues) => {
-    console.log("Atualizar processo:", { id, ...data });
-    // Implementar lógica de atualização
-    // Após salvar, redirecionar para lista de processos
-    router.push("/processos");
+  const onSubmit = async (data: ProcessoFormValues) => {
+    try {
+      await updateProcess(Number(id), {
+        number: cleanLowerValue(data.numero) ?? "",
+        name: cleanLowerValue(data.nome) ?? undefined,
+        hectares: parseHectares(data.hectares),
+        observation:
+          data.observacao?.trim() === "" ? undefined : data.observacao?.trim(),
+      });
+      message.success("Processo atualizado com sucesso.");
+      router.push("/processos");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao atualizar processo."
+      );
+    }
   };
 
   if (loading) {
@@ -134,7 +107,7 @@ const EditProcessoPage: React.FC = () => {
       <form onSubmit={handleSubmit(onSubmit)}>
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
-            Novo
+            Dados
           </h2>
           <div style={{ marginBottom: 16 }}>
             <HookFormInput
@@ -174,10 +147,7 @@ const EditProcessoPage: React.FC = () => {
           </div>
         </section>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
+        <Button type="primary" htmlType="submit">
           Atualizar
         </Button>
       </form>

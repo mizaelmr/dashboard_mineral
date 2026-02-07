@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
+import { getMiningSiteById, getAllProcesses, updateMiningSite } from "../../actions";
+import { cleanLowerValue } from "@/utils/cleanLowerValue";
 
 interface MineradoraFormValues {
   processo: string;
@@ -13,50 +15,6 @@ interface MineradoraFormValues {
   numeroConcessao: string;
   observacao: string;
 }
-
-interface Mineradora {
-  key: string;
-  id: string;
-  nome: string;
-  processo: string;
-  concessao: string;
-  observacao: string;
-}
-
-// Dados de exemplo de processos (mesmos da lista de processos)
-const processosOptions: SelectOption[] = [
-  { value: "1", label: "871.860/2006" },
-  { value: "2", label: "871.861/2006" },
-  { value: "3", label: "873.335/2006" },
-];
-
-// Dados de exemplo (mesmos da lista de mineradoras)
-const mockMineradoras: Mineradora[] = [
-  {
-    key: "2",
-    id: "2",
-    nome: "MINAS DIVERSAS (871.861/2006)",
-    processo: "871.861/2006",
-    concessao: "",
-    observacao: "ATIVA",
-  },
-  {
-    key: "3",
-    id: "3",
-    nome: "MINAS DIVERSAS (871.860/2006)",
-    processo: "871.860/2006",
-    concessao: "",
-    observacao: "ATIVA",
-  },
-  {
-    key: "4",
-    id: "4",
-    nome: "MINAS DIVERSAS (873.335/2006)",
-    processo: "873.335/2006",
-    concessao: "",
-    observacao: "ATIVA",
-  },
-];
 
 const sectionStyle: React.CSSProperties = {
   backgroundColor: "#fafafa",
@@ -67,24 +25,12 @@ const sectionStyle: React.CSSProperties = {
 
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
-// Função para mapear Mineradora para MineradoraFormValues
-const mapMineradoraToFormValues = (mineradora: Mineradora): MineradoraFormValues => {
-  // Encontrar o ID do processo baseado no número do processo
-  const processoOption = processosOptions.find((p) => p.label === mineradora.processo);
-  
-  return {
-    processo: processoOption?.value || "",
-    nome: mineradora.nome || "",
-    numeroConcessao: mineradora.concessao || "",
-    observacao: mineradora.observacao || "",
-  };
-};
-
 const EditMineradoraPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
+  const [processosOptions, setProcessosOptions] = useState<SelectOption[]>([]);
 
   const { control, handleSubmit, reset } = useForm<MineradoraFormValues>({
     defaultValues: {
@@ -96,33 +42,54 @@ const EditMineradoraPage: React.FC = () => {
   });
 
   useEffect(() => {
-    // Simular busca de dados da mineradora
-    const fetchMineradoraData = () => {
-      setLoading(true);
-      
-      // Buscar mineradora do array de exemplo
-      const mineradora = mockMineradoras.find((m) => m.id === id);
-      
-      if (mineradora) {
-        // Mapear dados da mineradora para o formato do formulário
-        const formData = mapMineradoraToFormValues(mineradora);
-        // Resetar formulário com os dados da mineradora
-        reset(formData);
-      }
-      
-      setLoading(false);
+    if (!id) return;
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([getMiningSiteById(Number(id)), getAllProcesses()])
+      .then(([site, processes]) => {
+        if (cancelled) return;
+        setProcessosOptions(
+          processes.map((p) => ({
+            value: String(p.id),
+            label: p.number ?? String(p.id),
+          }))
+        );
+        if (site) {
+          reset({
+            processo: site.processId != null ? String(site.processId) : "",
+            nome: site.name ?? "",
+            numeroConcessao: site.concessionNumber ?? "",
+            observacao: site.observation ?? "",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-
-    if (id) {
-      fetchMineradoraData();
-    }
   }, [id, reset]);
 
-  const onSubmit = (data: MineradoraFormValues) => {
-    console.log("Atualizar mineradora:", { id, ...data });
-    // Implementar lógica de atualização
-    // Após salvar, redirecionar para lista de mineradoras
-    router.push("/mineradoras");
+  const onSubmit = async (data: MineradoraFormValues) => {
+    try {
+      const concessionNumberValue = data.numeroConcessao?.trim();
+      await updateMiningSite(Number(id), {
+        processId: Number(data.processo),
+        name: cleanLowerValue(data.nome) ?? "",
+        concessionNumber: concessionNumberValue
+          ? (cleanLowerValue(data.numeroConcessao) ?? undefined)
+          : null,
+        observation:
+          data.observacao?.trim() === "" ? undefined : data.observacao?.trim(),
+      });
+      message.success("Mineradora atualizada com sucesso.");
+      router.push("/mineradoras");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao atualizar mineradora."
+      );
+    }
   };
 
   if (loading) {
@@ -138,7 +105,7 @@ const EditMineradoraPage: React.FC = () => {
       <form onSubmit={handleSubmit(onSubmit)}>
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
-            Nova
+            Dados
           </h2>
           <div style={{ marginBottom: 16 }}>
             <HookFormSelect
@@ -156,7 +123,7 @@ const EditMineradoraPage: React.FC = () => {
               name="nome"
               control={control}
               label="*Nome:"
-              placeholder="Digite nome do processo"
+              placeholder="Digite nome da mineradora"
               rules={{ required: "Nome é obrigatório" }}
               style={inputFullStyle}
             />
@@ -181,10 +148,7 @@ const EditMineradoraPage: React.FC = () => {
           </div>
         </section>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
+        <Button type="primary" htmlType="submit">
           Atualizar
         </Button>
       </form>

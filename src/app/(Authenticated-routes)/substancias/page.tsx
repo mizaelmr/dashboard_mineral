@@ -1,47 +1,78 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input } from "antd";
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
-
-interface Substancia {
-  key: string;
-  id: string;
-  nome: string;
-}
+import { Button, Space, Input, message } from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import { getAllSubstances, deleteSubstance } from "./actions";
+import {
+  SubstanceTableRow,
+  mapSubstanceToTableRow,
+} from "@/types/substance";
+import { capitalizeWords } from "@/utils/capitalize";
 
 const SubstânciasPage: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [dataSource, setDataSource] = useState<SubstanceTableRow[]>([]);
 
-  // Dados de exemplo
-  const [dataSource, setDataSource] = useState<Substancia[]>([
-    {
-      key: "1",
-      id: "1",
-      nome: "ESMERALDA",
-    },
-    {
-      key: "2",
-      id: "2",
-      nome: "ALEXANDRITA",
-    },
-    {
-      key: "3",
-      id: "3",
-      nome: "MOLIBDENIO",
-    },
-    {
-      key: "4",
-      id: "4",
-      nome: "QUARTZO",
-    },
-  ]);
+  const loadSubstances = useCallback(async () => {
+    setLoading(true);
+    try {
+      const substances = await getAllSubstances();
+      setDataSource(substances.map(mapSubstanceToTableRow));
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao carregar substâncias."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const columns: TableColumn<Substancia>[] = [
+  useEffect(() => {
+    loadSubstances();
+  }, [loadSubstances]);
+
+  const handleView = (record: SubstanceTableRow) => {
+    router.push(`/substancias/view/${record.id}`);
+  };
+
+  const handleEdit = (record: SubstanceTableRow) => {
+    router.push(`/substancias/edit/${record.id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteSubstance(Number(id));
+      message.success("Substância excluída com sucesso.");
+      await loadSubstances();
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao excluir substância."
+      );
+    }
+  };
+
+  const handleAdd = () => {
+    router.push("/substancias/addsubstancias");
+  };
+
+  const filteredData = dataSource.filter((item) =>
+    Object.values(item).some((val) =>
+      String(val).toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
+
+  const columns: TableColumn<SubstanceTableRow>[] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -55,6 +86,7 @@ const SubstânciasPage: React.FC = () => {
       dataIndex: "nome",
       key: "nome",
       sorter: (a, b) => a.nome.localeCompare(b.nome),
+      render: (text) => <strong>{capitalizeWords(text)}</strong>,
     },
     {
       title: "Ações",
@@ -84,36 +116,6 @@ const SubstânciasPage: React.FC = () => {
     },
   ];
 
-  const handleView = (record: Substancia) => {
-    router.push(`/substancias/view/${record.id}`);
-  };
-
-  const handleEdit = (record: Substancia) => {
-    router.push(`/substancias/edit/${record.id}`);
-  };
-
-  const handleDelete = (id: string) => {
-    console.log("Excluir substância:", id);
-    // Implementar lógica de exclusão
-    setDataSource(dataSource.filter((item) => item.id !== id));
-  };
-
-  const handleAdd = () => {
-    router.push("/substancias/addsubstancias");
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    // Implementar lógica de busca
-  };
-
-  // Filtrar dados baseado na busca
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
-
   return (
     <div>
       <div
@@ -133,7 +135,7 @@ const SubstânciasPage: React.FC = () => {
             prefix={<SearchOutlined />}
             allowClear
             style={{ width: 300 }}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
           />
           <Button
             type="primary"
@@ -145,7 +147,7 @@ const SubstânciasPage: React.FC = () => {
         </Space>
       </div>
 
-      <Table<Substancia>
+      <Table<SubstanceTableRow>
         columns={columns}
         dataSource={filteredData}
         loading={loading}
@@ -155,7 +157,6 @@ const SubstânciasPage: React.FC = () => {
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} substâncias`,
         }}
-        scroll={{ x: 800 }}
         bordered
       />
     </div>

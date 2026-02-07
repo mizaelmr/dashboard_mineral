@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button, message, Space } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
+import { HookFormInput, HookFormSelect, HookFormCpfInput, HookFormCnpjInput } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
 import { createClient } from "../actions";
 import {
@@ -155,11 +155,10 @@ const AddClientesPage: React.FC = () => {
               placeholder="Digite o nome do cliente"
               style={inputFullStyle}
             />
-            <HookFormInput
+            <HookFormCpfInput
               name="cpf"
               control={control}
               label="CPF:"
-              placeholder="000.000.000-00"
               style={inputFullStyle}
             />
           </div>
@@ -171,11 +170,10 @@ const AddClientesPage: React.FC = () => {
               placeholder="Digite a Razão Social do cliente"
               style={inputFullStyle}
             />
-            <HookFormInput
+            <HookFormCnpjInput
               name="cnpj"
               control={control}
               label="CNPJ:"
-              placeholder="00.000.000/0000-00"
               style={inputFullStyle}
             />
           </div>

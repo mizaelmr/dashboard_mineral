@@ -1,11 +1,20 @@
 "use client";
 
-import React from "react";
-import { useForm, Controller } from "react-hook-form";
-import { Button, Input, Upload } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
-import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
+import React, { useState, useEffect } from "react";
+import { useForm, Controller, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, Button, Col, Input, message, Modal, Row, Select, Tooltip, Upload } from "antd";
+import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import { HookFormInput, HookFormSelect, HookFormCpfInput, HookFormCnpjInput } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
+import {
+  newDeclaranteFormSchema,
+  type NewDeclaranteFormSchema,
+} from "@/schemas/declarante.schema";
+import { mapNewDeclaranteToCreateDto } from "@/types/client";
+import { createClient, getClientsByType } from "../../clientes/actions";
+import { getAllMiningSites } from "../../mineradoras/actions";
+import { capitalizeWords } from "@/utils/capitalize";
 
 interface CertificadoFormValues {
   cliente: string;
@@ -22,20 +31,9 @@ interface CertificadoFormValues {
   descricaoImagem: string;
 }
 
-// Dados de exemplo para selects
-const clientesOptions: SelectOption[] = [
-  { value: "1", label: "PR ATIVOS AMBIENTAIS E ENERGIAS RENOVAVEIS LTDA" },
-  { value: "2", label: "TIME INVEST ADMINISTRAÇÃO E PARTICIPAÇÕES EIRELI-ME" },
-];
-
-const declarantesOptions: SelectOption[] = [
-  { value: "1", label: "ALESSANDRO MONTEIRO DA SILVA" },
-  { value: "2", label: "Carlos Mendes" },
-];
-
-const mineradorasOptions: SelectOption[] = [
-  { value: "1", label: "MINAS DIVERSAS (871.861/2006)" },
-  { value: "2", label: "MINAS DIVERSAS (871.860/2006)" },
+const quickDeclaranteOptions: SelectOption[] = [
+  { value: "same_as_client", label: "Usar dados do cliente como declarante" },
+  { value: "new_declarante", label: "Novo declarante" },
 ];
 
 const substanciasOptions: SelectOption[] = [
@@ -64,16 +62,78 @@ const gridRow2Style: React.CSSProperties = {
   marginBottom: 16,
 };
 
-const gridRow3Style: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr",
-  gap: 16,
-  marginBottom: 16,
-};
-
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
+const newDeclaranteButtonStyle: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  minWidth: 32,
+  padding: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "#52c41a",
+  borderColor: "#52c41a",
+  color: "#fff",
+};
+
 const AddCertificadosPage: React.FC = () => {
+  const [isNewDeclaranteModalOpen, setIsNewDeclaranteModalOpen] = useState(false);
+  const [clientesOptions, setClientesOptions] = useState<SelectOption[]>([]);
+  const [declarantesGroupedOptions, setDeclarantesGroupedOptions] = useState<
+    { label: string; options: SelectOption[] }[]
+  >([{ label: "Escolha rápida", options: quickDeclaranteOptions }]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [mineradorasOptions, setMineradorasOptions] = useState<SelectOption[]>([]);
+  const [mineradorasLoading, setMineradorasLoading] = useState(false);
+
+  const loadClientsAndDeclarantes = (showLoading = true) => {
+    if (showLoading) queueMicrotask(() => setClientsLoading(true));
+    Promise.all([getClientsByType(1), getClientsByType(2)])
+      .then(([type1Clients, type2Clients]) => {
+        setClientesOptions(
+          type1Clients.map((c) => ({ value: String(c.id), label: capitalizeWords(c.name) }))
+        );
+        setDeclarantesGroupedOptions([
+          { label: "Escolha rápida", options: quickDeclaranteOptions },
+          {
+            label: "Declarantes cadastrados",
+            options: type2Clients.map((c) => ({ value: String(c.id), label: capitalizeWords(c.name) })),
+          },
+        ]);
+      })
+      .catch(() => {
+        message.error("Falha ao carregar clientes e declarantes.");
+      })
+      .finally(() => {
+        setClientsLoading(false);
+      });
+  };
+
+  const loadMiningSites = (showLoading = true) => {
+    if (showLoading) queueMicrotask(() => setMineradorasLoading(true));
+    getAllMiningSites()
+      .then((sites) => {
+        setMineradorasOptions(
+          sites.map((m) => ({
+            value: String(m.id),
+            label: capitalizeWords(m.name),
+          }))
+        );
+      })
+      .catch(() => {
+        message.error("Falha ao carregar mineradoras.");
+      })
+      .finally(() => {
+        setMineradorasLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    loadClientsAndDeclarantes(true);
+    loadMiningSites(true);
+  }, []);
+
   const { control, handleSubmit } = useForm<CertificadoFormValues>({
     defaultValues: {
       cliente: "",
@@ -91,9 +151,36 @@ const AddCertificadosPage: React.FC = () => {
     },
   });
 
+  const declaranteValue = useWatch({ control, name: "declarante" });
+  const showNewDeclaranteButton = declaranteValue === "new_declarante";
+
   const onSubmit = (data: CertificadoFormValues) => {
     console.log("Salvar certificado:", data);
-    // Implementar lógica de persistência
+  };
+
+  const newDeclaranteForm = useForm<NewDeclaranteFormSchema>({
+    resolver: zodResolver(newDeclaranteFormSchema),
+    defaultValues: { nome: "", cpf: "", razaoSocial: "", cnpj: "" },
+  });
+
+  const handleOpenNewDeclaranteModal = () => setIsNewDeclaranteModalOpen(true);
+  const handleCloseNewDeclaranteModal = () => {
+    setIsNewDeclaranteModalOpen(false);
+    newDeclaranteForm.reset();
+  };
+
+  const handleSubmitNewDeclarante = async (data: NewDeclaranteFormSchema) => {
+    try {
+      const dto = mapNewDeclaranteToCreateDto(data);
+      await createClient(dto);
+      message.success("Declarante cadastrado com sucesso.");
+      handleCloseNewDeclaranteModal();
+      loadClientsAndDeclarantes(false);
+    } catch (err) {
+      message.error(
+        err instanceof Error ? err.message : "Erro ao cadastrar declarante."
+      );
+    }
   };
 
   return (
@@ -117,84 +204,137 @@ const AddCertificadosPage: React.FC = () => {
               placeholder="Selecione um Cliente"
               rules={{ required: "Cliente é obrigatório" }}
               style={inputFullStyle}
+              loading={clientsLoading}
             />
-            <HookFormSelect
+            <Controller
               name="declarante"
               control={control}
-              label="Declarante:"
-              options={declarantesOptions}
-              placeholder="Selecione um Declarante"
-              style={inputFullStyle}
+              render={({ field, fieldState }) => (
+                <div>
+                  <label htmlFor="declarante" style={{ display: "block", marginBottom: 4 }}>
+                    Declarante:
+                  </label>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <Select
+                      id="declarante"
+                      {...field}
+                      options={declarantesGroupedOptions}
+                      placeholder="Selecione um Declarante"
+                      style={{ flex: 1, width: "100%" }}
+                      value={field.value === "" || field.value == null ? undefined : field.value}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        if (value === "new_declarante") {
+                          handleOpenNewDeclaranteModal();
+                        }
+                      }}
+                      onBlur={field.onBlur}
+                      status={fieldState.invalid ? "error" : undefined}
+                      loading={clientsLoading}
+                    />
+                    {showNewDeclaranteButton && (
+                      <Tooltip title="Novo declarante">
+                        <Button
+                          type="primary"
+                          icon={<PlusOutlined />}
+                          style={newDeclaranteButtonStyle}
+                          onClick={handleOpenNewDeclaranteModal}
+                        />
+                      </Tooltip>
+                    )}
+                  </div>
+                  {fieldState.error?.message != null && (
+                    <span style={{ fontSize: 12, color: "#ff4d4f", marginTop: 4, display: "block" }}>
+                      {fieldState.error.message}
+                    </span>
+                  )}
+                </div>
+              )}
             />
           </div>
 
-          <div style={gridRow3Style}>
-            <HookFormSelect
-              name="mineradora"
-              control={control}
-              label="*Mineradora:"
-              options={mineradorasOptions}
-              placeholder="Selecione uma Mineradora"
-              rules={{ required: "Mineradora é obrigatória" }}
-              style={inputFullStyle}
-            />
-            <HookFormSelect
-              name="substancia"
-              control={control}
-              label="*Substância:"
-              options={substanciasOptions}
-              placeholder="selecione"
-              rules={{ required: "Substância é obrigatória" }}
-              style={inputFullStyle}
-            />
-            <HookFormSelect
-              name="unidadeMedida"
-              control={control}
-              label="*Unidade de Medida:"
-              options={unidadesMedidaOptions}
-              placeholder="Selecione uma Unidade"
-              rules={{ required: "Unidade de Medida é obrigatória" }}
-              style={inputFullStyle}
-            />
-          </div>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={24}>
+              <HookFormSelect
+                name="mineradora"
+                control={control}
+                label="*Mineradora:"
+                options={mineradorasOptions}
+                placeholder="Selecione uma Mineradora"
+                rules={{ required: "Mineradora é obrigatória" }}
+                style={inputFullStyle}
+                loading={mineradorasLoading}
+              />
+            </Col>
+          </Row>
 
-          <div style={{ marginBottom: 16 }}>
-            <HookFormInput
-              name="categoria"
-              control={control}
-              label="*Categoria:"
-              placeholder="Digite a categoria do produto"
-              rules={{ required: "Categoria é obrigatória" }}
-              style={inputFullStyle}
-            />
-          </div>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={8}>
+              <HookFormInput
+                name="categoria"
+                control={control}
+                label="*Categoria:"
+                placeholder="Digite a categoria do produto"
+                rules={{ required: "Categoria é obrigatória" }}
+                style={inputFullStyle}
+              />
+            </Col>
+            <Col span={8}>
+              <HookFormSelect
+                name="substancia"
+                control={control}
+                label="*Substância:"
+                options={substanciasOptions}
+                placeholder="selecione"
+                rules={{ required: "Substância é obrigatória" }}
+                style={inputFullStyle}
+              />
+            </Col>
+            <Col span={8}>
+              <HookFormSelect
+                name="unidadeMedida"
+                control={control}
+                label="*Unidade de Medida:"
+                options={unidadesMedidaOptions}
+                placeholder="Selecione uma Unidade"
+                rules={{ required: "Unidade de Medida é obrigatória" }}
+                style={inputFullStyle}
+              />
+            </Col>
+          </Row>
 
-          <div style={gridRow3Style}>
-            <HookFormInput
-              name="peso"
-              control={control}
-              label="*Peso (Kg):"
-              placeholder="0,00000"
-              rules={{ required: "Peso é obrigatório" }}
-              style={inputFullStyle}
-            />
-            <HookFormInput
-              name="valorPorPeso"
-              control={control}
-              label="*Valor por peso (R$/Kg):"
-              placeholder="0,0000"
-              rules={{ required: "Valor por peso é obrigatório" }}
-              style={inputFullStyle}
-            />
-            <HookFormInput
-              name="valorTotal"
-              control={control}
-              label="*Valor total (R$):"
-              placeholder="0.00"
-              rules={{ required: "Valor total é obrigatório" }}
-              style={inputFullStyle}
-            />
-          </div>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={8}>
+              <HookFormInput
+                name="peso"
+                control={control}
+                label="*Peso (Kg):"
+                placeholder="0,00000"
+                rules={{ required: "Peso é obrigatório" }}
+                style={inputFullStyle}
+              />
+            </Col>
+            <Col span={8}>
+              <HookFormInput
+                name="valorPorPeso"
+                control={control}
+                label="*Valor por peso (R$/Kg):"
+                placeholder="0,0000"
+                rules={{ required: "Valor por peso é obrigatório" }}
+                style={inputFullStyle}
+              />
+            </Col>
+            <Col span={8}>
+              <HookFormInput
+                name="valorTotal"
+                control={control}
+                label="*Valor total (R$):"
+                placeholder="0.00"
+                rules={{ required: "Valor total é obrigatório" }}
+                style={inputFullStyle}
+              />
+            </Col>
+          </Row>
 
           <div style={{ marginBottom: 16 }}>
             <Controller
@@ -276,6 +416,64 @@ const AddCertificadosPage: React.FC = () => {
           Salvar
         </Button>
       </form>
+
+      <Modal
+        title="Novo Declarante"
+        open={isNewDeclaranteModalOpen}
+        onCancel={handleCloseNewDeclaranteModal}
+        footer={null}
+        destroyOnClose
+      >
+        <Alert
+          type="warning"
+          message="Atenção!"
+          description="Preencha nome e CPF ou razão social e CNPJ."
+          style={{ marginBottom: 24 }}
+          showIcon
+        />
+        <form onSubmit={newDeclaranteForm.handleSubmit(handleSubmitNewDeclarante)}>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="nome"
+              control={newDeclaranteForm.control}
+              label="Nome:"
+              placeholder="Nome completo"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormCpfInput
+              name="cpf"
+              control={newDeclaranteForm.control}
+              label="CPF:"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="razaoSocial"
+              control={newDeclaranteForm.control}
+              label="Razão social:"
+              placeholder="Razão social"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 24 }}>
+            <HookFormCnpjInput
+              name="cnpj"
+              control={newDeclaranteForm.control}
+              label="CNPJ:"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={handleCloseNewDeclaranteModal}>Cancelar</Button>
+            <Button type="primary" htmlType="submit">
+              Salvar
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

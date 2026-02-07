@@ -5,11 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Button, message } from "antd";
 import { HookFormInput } from "@/components/hook-forms";
-import { getSubstanceById, updateSubstance } from "../../actions";
+import { getLicenseById, updateLicense } from "../../actions";
 import { cleanLowerValue } from "@/utils/cleanLowerValue";
 
-interface SubstanciaFormValues {
+interface LicencaFormValues {
   nome: string;
+  codigo: string;
+  orgao: string;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -21,15 +23,17 @@ const sectionStyle: React.CSSProperties = {
 
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
-const EditSubstanciaPage: React.FC = () => {
+const EditLicencaPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
 
-  const { control, handleSubmit, reset } = useForm<SubstanciaFormValues>({
+  const { control, handleSubmit, reset } = useForm<LicencaFormValues>({
     defaultValues: {
       nome: "",
+      codigo: "",
+      orgao: "",
     },
   });
 
@@ -37,11 +41,13 @@ const EditSubstanciaPage: React.FC = () => {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
-    getSubstanceById(Number(id))
-      .then((substance) => {
-        if (cancelled || !substance) return;
+    getLicenseById(Number(id))
+      .then((license) => {
+        if (cancelled || !license) return;
         reset({
-          nome: substance.name ?? "",
+          nome: license.name ?? "",
+          codigo: license.code ?? "",
+          orgao: license.authority ?? "",
         });
       })
       .finally(() => {
@@ -52,16 +58,18 @@ const EditSubstanciaPage: React.FC = () => {
     };
   }, [id, reset]);
 
-  const onSubmit = async (data: SubstanciaFormValues) => {
+  const onSubmit = async (data: LicencaFormValues) => {
     try {
-      await updateSubstance(Number(id), {
+      await updateLicense(Number(id), {
         name: cleanLowerValue(data.nome) ?? "",
+        code: cleanLowerValue(data.codigo) ?? undefined,
+        authority: cleanLowerValue(data.orgao) ?? undefined,
       });
-      message.success("Substância atualizada com sucesso.");
-      router.push("/substancias");
+      message.success("Licença atualizada com sucesso.");
+      router.push("/licencas");
     } catch (error) {
       message.error(
-        error instanceof Error ? error.message : "Falha ao atualizar substância."
+        error instanceof Error ? error.message : "Falha ao atualizar licença."
       );
     }
   };
@@ -73,7 +81,7 @@ const EditSubstanciaPage: React.FC = () => {
   return (
     <div>
       <h1 style={{ margin: "0 0 24px", fontSize: "24px", fontWeight: 600 }}>
-        Editar Substância
+        Editar Licença
       </h1>
 
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -85,9 +93,27 @@ const EditSubstanciaPage: React.FC = () => {
             <HookFormInput
               name="nome"
               control={control}
-              label="*Nome da Substância:"
-              placeholder="Digite o nome... Exemplo: Esmeralda, Alexandrita"
+              label="*Nome:"
+              placeholder="Digite o nome da licença"
               rules={{ required: "Nome é obrigatório" }}
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="codigo"
+              control={control}
+              label="Código:"
+              placeholder="Digite o código"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="orgao"
+              control={control}
+              label="Órgão:"
+              placeholder="Digite o órgão emissor"
               style={inputFullStyle}
             />
           </div>
@@ -101,4 +127,4 @@ const EditSubstanciaPage: React.FC = () => {
   );
 };
 
-export default EditSubstanciaPage;
+export default EditLicencaPage;

@@ -6,9 +6,10 @@ import { debounce } from "lodash";
 import Table, { TableColumn } from "@/components/Table";
 import { Button, Space, Input, message } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
-import { getAllClients, searchClients, deleteClient } from "./actions";
+import { getClientsByType, searchClients, deleteClient } from "./actions";
 import { ClienteTableRow, mapClientToTableRow } from "@/types/client";
 import { formatPhone } from "@/utils/formatPhone";
+import { capitalizeWords } from "@/utils/capitalize";
 
 const ClientesPage: React.FC = () => {
   const router = useRouter();
@@ -18,7 +19,7 @@ const ClientesPage: React.FC = () => {
   const loadClients = useCallback(async () => {
     setLoading(true);
     try {
-      const clients = await getAllClients();
+      const clients = await getClientsByType(1);
       const mappedClients = clients.map(mapClientToTableRow);
       setDataSource(mappedClients);
     } catch (error) {
@@ -69,7 +70,7 @@ const ClientesPage: React.FC = () => {
       key: "nome",
       width: 200,
       sorter: (a, b) => a.nome.localeCompare(b.nome),
-      render: (text) => <strong>{text}</strong>,
+      render: (text) => <strong>{capitalizeWords(text)}</strong>,
     },
     {
       title: "CPF/CNPJ",
@@ -128,7 +129,7 @@ const ClientesPage: React.FC = () => {
     setLoading(true);
     try {
       if (value.trim()) {
-        const clients = await searchClients({ name: value.trim() });
+        const clients = await searchClients({ type: 1, name: value.trim() });
         const mappedClients = clients.map(mapClientToTableRow);
         setDataSource(mappedClients);
       } else {

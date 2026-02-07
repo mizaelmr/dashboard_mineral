@@ -1,27 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
-import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { Button, message, Space } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { HookFormInput, HookFormSelect, HookFormCpfInput, HookFormCnpjInput } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
-
-interface DeclaranteFormValues {
-  cpf: string;
-  nomeEmpresa: string;
-  nome: string;
-  cnpj: string;
-  cep: string;
-  endereco: string;
-  complemento: string;
-  bairro: string;
-  numero: string;
-  cidade: string;
-  estado: string;
-  cel: string;
-  tel: string;
-  email: string;
-}
+import { createClient } from "../../clientes/actions";
+import { mapFormValuesToCreateDto } from "@/types/client";
+import { clienteFormSchema, ClienteFormSchema } from "@/schemas/client.schema";
 
 const UFS: SelectOption[] = [
   { value: "AC", label: "Acre" },
@@ -77,11 +66,14 @@ const gridRow3Style: React.CSSProperties = {
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
 const AddDeclarantesPage: React.FC = () => {
-  const { control, handleSubmit } = useForm<DeclaranteFormValues>({
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const { control, handleSubmit } = useForm<ClienteFormSchema>({
+    resolver: zodResolver(clienteFormSchema),
     defaultValues: {
-      cpf: "",
-      nomeEmpresa: "",
       nome: "",
+      cpf: "",
+      razaoSocial: "",
       cnpj: "",
       cep: "",
       endereco: "",
@@ -96,60 +88,94 @@ const AddDeclarantesPage: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: DeclaranteFormValues) => {
-    console.log("Salvar declarante:", data);
-    // Implementar lógica de persistência
+  const handleBack = () => router.push("/declarantes");
+  const handleCancel = () => router.push("/declarantes");
+
+  const onSubmit = async (data: ClienteFormSchema) => {
+    setLoading(true);
+    try {
+      const createDto = { ...mapFormValuesToCreateDto(data), type: 2 as const };
+      await createClient(createDto);
+      message.success("Declarante cadastrado com sucesso.");
+      router.push("/declarantes");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao cadastrar declarante."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div>
-      <h1 style={{ margin: "0 0 24px", fontSize: "24px", fontWeight: 600 }}>
-        Novo Declarante
-      </h1>
-
       <form onSubmit={handleSubmit(onSubmit)}>
-        {/* Seção Dados */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Button
+              type="default"
+              htmlType="button"
+              icon={<ArrowLeftOutlined />}
+              onClick={handleBack}
+            >
+              Voltar
+            </Button>
+            <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 600 }}>
+              Novo Declarante
+            </h1>
+          </div>
+          <Space size="middle">
+            <Button type="default" htmlType="button" onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Salvar
+            </Button>
+          </Space>
+        </div>
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
             Dados
           </h2>
           <div style={gridRow2Style}>
             <HookFormInput
-              name="cpf"
-              control={control}
-              label="*CPF:"
-              placeholder="000.000.000-00"
-              rules={{ required: "CPF é obrigatório" }}
-              style={inputFullStyle}
-            />
-            <HookFormInput
               name="nome"
               control={control}
               label="*Nome:"
               placeholder="Digite o nome do declarante"
-              rules={{ required: "Nome é obrigatório" }}
+              style={inputFullStyle}
+            />
+            <HookFormCpfInput
+              name="cpf"
+              control={control}
+              label="CPF:"
               style={inputFullStyle}
             />
           </div>
           <div style={gridRow2Style}>
             <HookFormInput
-              name="nomeEmpresa"
+              name="razaoSocial"
               control={control}
-              label="Nome da empresa:"
-              placeholder="Digite o nome da empresa"
+              label="Razão Social:"
+              placeholder="Digite a Razão Social"
               style={inputFullStyle}
             />
-            <HookFormInput
+            <HookFormCnpjInput
               name="cnpj"
               control={control}
               label="CNPJ:"
-              placeholder="00.000.000/0000-00"
               style={inputFullStyle}
             />
           </div>
         </section>
 
-        {/* Seção Endereço */}
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
             Endereço
@@ -214,7 +240,6 @@ const AddDeclarantesPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Seção Contatos */}
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
             Contatos
@@ -243,13 +268,6 @@ const AddDeclarantesPage: React.FC = () => {
             />
           </div>
         </section>
-
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
-          Salvar
-        </Button>
       </form>
     </div>
   );

@@ -1,106 +1,76 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input } from "antd";
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
-
-interface Declarante {
-  key: string;
-  id: string;
-  nome: string;
-  cpf: string;
-  email: string;
-  telefone: string;
-  cidade: string;
-  estado: string;
-  tipo: "físico" | "jurídico";
-  status: "ativo" | "inativo";
-}
+import { Button, Space, Input, message } from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import { getClientsByType, deleteClient } from "../clientes/actions";
+import { ClienteTableRow, mapClientToTableRow } from "@/types/client";
+import { formatPhone } from "@/utils/formatPhone";
+import { capitalizeWords } from "@/utils/capitalize";
 
 const DeclarantesPage: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [dataSource, setDataSource] = useState<ClienteTableRow[]>([]);
 
-  // Dados de exemplo
-  const [dataSource, setDataSource] = useState<Declarante[]>([
-    {
-      key: "1",
-      id: "1",
-      nome: "Carlos Mendes",
-      cpf: "123.456.789-00",
-      email: "carlos.mendes@email.com",
-      telefone: "(71) 99999-9999",
-      cidade: "Salvador",
-      estado: "BA",
-      tipo: "físico",
-      status: "ativo",
-    },
-    {
-      key: "2",
-      id: "2",
-      nome: "Fernanda Lima",
-      cpf: "987.654.321-00",
-      email: "fernanda.lima@email.com",
-      telefone: "(71) 88888-8888",
-      cidade: "Feira de Santana",
-      estado: "BA",
-      tipo: "físico",
-      status: "ativo",
-    },
-    {
-      key: "3",
-      id: "3",
-      nome: "Mineração Bahia S.A.",
-      cpf: "12.345.678/0001-90",
-      email: "contato@mineracaobahia.com.br",
-      telefone: "(71) 77777-7777",
-      cidade: "Vitória da Conquista",
-      estado: "BA",
-      tipo: "jurídico",
-      status: "ativo",
-    },
-    {
-      key: "4",
-      id: "4",
-      nome: "Roberto Alves",
-      cpf: "111.222.333-44",
-      email: "roberto.alves@email.com",
-      telefone: "(71) 66666-6666",
-      cidade: "Ilhéus",
-      estado: "BA",
-      tipo: "físico",
-      status: "inativo",
-    },
-    {
-      key: "5",
-      id: "5",
-      nome: "Juliana Rocha",
-      cpf: "555.666.777-88",
-      email: "juliana.rocha@email.com",
-      telefone: "(71) 55555-5555",
-      cidade: "Juazeiro",
-      estado: "BA",
-      tipo: "físico",
-      status: "ativo",
-    },
-    {
-      key: "6",
-      id: "6",
-      nome: "Extração Mineral LTDA",
-      cpf: "98.765.432/0001-10",
-      email: "contato@extracaomineral.com.br",
-      telefone: "(71) 44444-4444",
-      cidade: "Camaçari",
-      estado: "BA",
-      tipo: "jurídico",
-      status: "ativo",
-    },
-  ]);
+  const loadDeclarantes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const clients = await getClientsByType(2);
+      setDataSource(clients.map(mapClientToTableRow));
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao carregar declarantes."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const columns: TableColumn<Declarante>[] = [
+  useEffect(() => {
+    loadDeclarantes();
+  }, [loadDeclarantes]);
+
+  const handleView = (record: ClienteTableRow) => {
+    router.push(`/declarantes/view/${record.id}`);
+  };
+
+  const handleEdit = (record: ClienteTableRow) => {
+    router.push(`/declarantes/edit/${record.id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteClient(Number(id));
+      message.success("Declarante excluído com sucesso.");
+      await loadDeclarantes();
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao excluir declarante."
+      );
+    }
+  };
+
+  const handleAdd = () => {
+    router.push("/declarantes/adddeclarantes");
+  };
+
+  const filteredData = dataSource.filter((item) =>
+    Object.values(item).some((val) =>
+      String(val).toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
+
+  const columns: TableColumn<ClienteTableRow>[] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -115,12 +85,12 @@ const DeclarantesPage: React.FC = () => {
       key: "nome",
       width: 200,
       sorter: (a, b) => a.nome.localeCompare(b.nome),
-      render: (text) => <strong>{text}</strong>,
+      render: (text) => <strong>{capitalizeWords(text)}</strong>,
     },
     {
       title: "CPF/CNPJ",
-      dataIndex: "cpf",
-      key: "cpf",
+      dataIndex: "cpfCnpj",
+      key: "cpfCnpj",
       width: 150,
     },
     {
@@ -131,126 +101,39 @@ const DeclarantesPage: React.FC = () => {
       ellipsis: true,
     },
     {
-      title: "Telefone",
-      dataIndex: "telefone",
-      key: "telefone",
-      width: 150,
-    },
-    {
-      title: "Cidade",
-      dataIndex: "cidade",
-      key: "cidade",
-      width: 150,
-      sorter: (a, b) => a.cidade.localeCompare(b.cidade),
-    },
-    {
-      title: "Estado",
-      dataIndex: "estado",
-      key: "estado",
-      width: 100,
-      filters: [
-        { text: "BA", value: "BA" },
-        { text: "SP", value: "SP" },
-        { text: "RJ", value: "RJ" },
-      ],
-      onFilter: (value, record) => record.estado === value,
-    },
-    {
-      title: "Tipo",
-      dataIndex: "tipo",
-      key: "tipo",
-      width: 120,
-      filters: [
-        { text: "Físico", value: "físico" },
-        { text: "Jurídico", value: "jurídico" },
-      ],
-      onFilter: (value, record) => record.tipo === value,
-      render: (tipo: string) => (
-        <span
-          style={{
-            padding: "4px 8px",
-            borderRadius: "4px",
-            backgroundColor: tipo === "físico" ? "#e6f7ff" : "#f0f5ff",
-            color: tipo === "físico" ? "#1890ff" : "#2f54eb",
-            fontWeight: 500,
-          }}
-        >
-          {tipo === "físico" ? "Físico" : "Jurídico"}
-        </span>
-      ),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 80,
-      filters: [
-        { text: "Ativo", value: "ativo" },
-        { text: "Inativo", value: "inativo" },
-      ],
-      onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <span
-          style={{
-            padding: "4px 8px",
-            borderRadius: "4px",
-            backgroundColor: status === "ativo" ? "#f6ffed" : "#fff2e8",
-            color: status === "ativo" ? "#52c41a" : "#fa8c16",
-            fontWeight: 500,
-          }}
-        >
-          {status === "ativo" ? "Ativo" : "Inativo"}
-        </span>
-      ),
+      title: "Celular",
+      dataIndex: "celular",
+      key: "celular",
+      width: 130,
+      render: (text: string) => formatPhone(text),
     },
     {
       title: "Ações",
       key: "acoes",
-      width: 80,
+      width: 120,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
           <Button
             type="link"
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record)}
+          />
+          <Button
+            type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
-            />
+          />
           <Button
             type="link"
             danger
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
-            />
+          />
         </Space>
       ),
     },
   ];
-
-  const handleEdit = (record: Declarante) => {
-    router.push(`/declarantes/edit/${record.id}`);
-  };
-
-  const handleDelete = (id: string) => {
-    console.log("Excluir declarante:", id);
-    // Implementar lógica de exclusão
-    setDataSource(dataSource.filter((item) => item.id !== id));
-  };
-
-  const handleAdd = () => {
-    router.push("/declarantes/adddeclarantes");
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    // Implementar lógica de busca
-  };
-
-  // Filtrar dados baseado na busca
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
 
   return (
     <div>
@@ -271,19 +154,15 @@ const DeclarantesPage: React.FC = () => {
             prefix={<SearchOutlined />}
             allowClear
             style={{ width: 300 }}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAdd}
-          >
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
             Novo Declarante
           </Button>
         </Space>
       </div>
 
-      <Table<Declarante>
+      <Table<ClienteTableRow>
         columns={columns}
         dataSource={filteredData}
         loading={loading}
@@ -293,7 +172,7 @@ const DeclarantesPage: React.FC = () => {
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} declarantes`,
         }}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 800 }}
         bordered
       />
     </div>

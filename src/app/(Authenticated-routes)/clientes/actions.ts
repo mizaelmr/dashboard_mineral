@@ -35,6 +35,20 @@ export async function getAllClients(): Promise<Client[]> {
   }
 }
 
+export async function getClientsByType(type: number): Promise<Client[]> {
+  try {
+    const token = await getToken();
+    return await apiGet<Client[]>(`/clients?type=${type}`, token);
+  } catch (error) {
+    if (error instanceof ApiClientError) {
+      throw new Error(
+        `Failed to fetch clients: ${error.message}`
+      );
+    }
+    throw new Error('Failed to fetch clients');
+  }
+}
+
 export async function getClientById(id: number): Promise<Client> {
   try {
     const token = await getToken();
@@ -55,6 +69,9 @@ export async function searchClients(
 ): Promise<Client[]> {
   try {
     const queryParams = new URLSearchParams();
+    if (params.type !== undefined) {
+      queryParams.append('type', String(params.type));
+    }
     if (params.name) {
       queryParams.append('name', params.name);
     }
@@ -65,7 +82,7 @@ export async function searchClients(
     const queryString = queryParams.toString();
     const endpoint = queryString
       ? `/clients/search?${queryString}`
-      : '/clients/search';
+      : '/clients';
 
     const token = await getToken();
     return await apiGet<Client[]>(endpoint, token);

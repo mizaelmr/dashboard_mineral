@@ -1,10 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
+import { getAllProcesses, createMiningSite } from "../actions";
+import { cleanLowerValue } from "@/utils/cleanLowerValue";
 
 interface MineradoraFormValues {
   processo: string;
@@ -12,13 +15,6 @@ interface MineradoraFormValues {
   numeroConcessao: string;
   observacao: string;
 }
-
-// Dados de exemplo de processos (mesmos da lista de processos)
-const processosOptions: SelectOption[] = [
-  { value: "1", label: "871.860/2006" },
-  { value: "2", label: "871.861/2006" },
-  { value: "3", label: "873.335/2006" },
-];
 
 const sectionStyle: React.CSSProperties = {
   backgroundColor: "#fafafa",
@@ -30,6 +26,11 @@ const sectionStyle: React.CSSProperties = {
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
 const AddMineradorasPage: React.FC = () => {
+  const router = useRouter();
+  const [processosOptions, setProcessosOptions] = useState<SelectOption[]>([]);
+  const [loadingProcesses, setLoadingProcesses] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   const { control, handleSubmit } = useForm<MineradoraFormValues>({
     defaultValues: {
       processo: "",
@@ -39,9 +40,43 @@ const AddMineradorasPage: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: MineradoraFormValues) => {
-    console.log("Salvar mineradora:", data);
-    // Implementar lógica de persistência
+  useEffect(() => {
+    getAllProcesses()
+      .then((processes) => {
+        setProcessosOptions(
+          processes.map((p) => ({
+            value: String(p.id),
+            label: p.number ?? String(p.id),
+          }))
+        );
+      })
+      .catch(() => {
+        message.error("Falha ao carregar processos.");
+      })
+      .finally(() => {
+        setLoadingProcesses(false);
+      });
+  }, []);
+
+  const onSubmit = async (data: MineradoraFormValues) => {
+    setSubmitting(true);
+    try {
+      await createMiningSite({
+        processId: Number(data.processo),
+        name: cleanLowerValue(data.nome) ?? "",
+        concessionNumber: cleanLowerValue(data.numeroConcessao) ?? undefined,
+        observation:
+          data.observacao?.trim() === "" ? undefined : data.observacao?.trim(),
+      });
+      message.success("Mineradora cadastrada com sucesso.");
+      router.push("/mineradoras");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao cadastrar mineradora."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -53,7 +88,7 @@ const AddMineradorasPage: React.FC = () => {
       <form onSubmit={handleSubmit(onSubmit)}>
         <section style={sectionStyle}>
           <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
-            Nova
+            Dados
           </h2>
           <div style={{ marginBottom: 16 }}>
             <HookFormSelect
@@ -64,6 +99,7 @@ const AddMineradorasPage: React.FC = () => {
               placeholder="Selecione um Processo"
               rules={{ required: "Processo é obrigatório" }}
               style={inputFullStyle}
+              loading={loadingProcesses}
             />
           </div>
           <div style={{ marginBottom: 16 }}>
@@ -71,7 +107,7 @@ const AddMineradorasPage: React.FC = () => {
               name="nome"
               control={control}
               label="*Nome:"
-              placeholder="Digite nome do processo"
+              placeholder="Digite nome da mineradora"
               rules={{ required: "Nome é obrigatório" }}
               style={inputFullStyle}
             />
@@ -96,10 +132,7 @@ const AddMineradorasPage: React.FC = () => {
           </div>
         </section>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
+        <Button type="primary" htmlType="submit" loading={submitting}>
           Salvar
         </Button>
       </form>

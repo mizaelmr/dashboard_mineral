@@ -1,64 +1,81 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input } from "antd";
-import { SearchOutlined, EyeOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-
-interface Licenca {
-  key: string;
-  id: string;
-  nome: string;
-  cadastrado: string;
-}
+import { Button, Space, Input, message } from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import {
+  getAllLicenses,
+  deleteLicense,
+} from "./actions";
+import {
+  LicenseTableRow,
+  mapLicenseToTableRow,
+} from "@/types/license";
+import { capitalizeWords } from "@/utils/capitalize";
 
 const LicencasPage: React.FC = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [dataSource, setDataSource] = useState<LicenseTableRow[]>([]);
 
-  // Dados de exemplo
-  const [dataSource, setDataSource] = useState<Licenca[]>([
-    {
-      key: "1",
-      id: "1",
-      nome: "INEMA 499 D.O.E 01/07/2011",
-      cadastrado: "15/01/2024",
-    },
-    {
-      key: "2",
-      id: "2",
-      nome: "INEMA 500 D.O.E 15/08/2012",
-      cadastrado: "20/02/2024",
-    },
-    {
-      key: "3",
-      id: "3",
-      nome: "INEMA 501 D.O.E 20/09/2013",
-      cadastrado: "10/06/2023",
-    },
-    {
-      key: "4",
-      id: "4",
-      nome: "INEMA 502 D.O.E 05/10/2014",
-      cadastrado: "05/03/2024",
-    },
-    {
-      key: "5",
-      id: "5",
-      nome: "INEMA 503 D.O.E 12/11/2015",
-      cadastrado: "12/04/2024",
-    },
-    {
-      key: "6",
-      id: "6",
-      nome: "INEMA 504 D.O.E 18/12/2016",
-      cadastrado: "18/05/2024",
-    },
-  ]);
+  const loadLicenses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const licenses = await getAllLicenses();
+      setDataSource(licenses.map(mapLicenseToTableRow));
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao carregar licenças."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const columns: TableColumn<Licenca>[] = [
+  useEffect(() => {
+    loadLicenses();
+  }, [loadLicenses]);
+
+  const handleView = (record: LicenseTableRow) => {
+    router.push(`/licencas/view/${record.id}`);
+  };
+
+  const handleEdit = (record: LicenseTableRow) => {
+    router.push(`/licencas/edit/${record.id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteLicense(Number(id));
+      message.success("Licença excluída com sucesso.");
+      await loadLicenses();
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao excluir licença."
+      );
+    }
+  };
+
+  const handleAdd = () => {
+    router.push("/licencas/addlicencas");
+  };
+
+  const filteredData = dataSource.filter((item) =>
+    Object.values(item).some((val) =>
+      String(val).toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
+
+  const columns: TableColumn<LicenseTableRow>[] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -71,14 +88,31 @@ const LicencasPage: React.FC = () => {
       title: "Nome",
       dataIndex: "nome",
       key: "nome",
-      width: 200,
+      width: 280,
       sorter: (a, b) => a.nome.localeCompare(b.nome),
+      render: (text) => <strong>{capitalizeWords(text)}</strong>,
+    },
+    {
+      title: "Código",
+      dataIndex: "codigo",
+      key: "codigo",
+      width: 150,
+      sorter: (a, b) => a.codigo.localeCompare(b.codigo),
+      render: (text) => text || "-",
+    },
+    {
+      title: "Órgão",
+      dataIndex: "orgao",
+      key: "orgao",
+      width: 120,
+      ellipsis: true,
+      render: (text) => text || "-",
     },
     {
       title: "Cadastrado",
       dataIndex: "cadastrado",
       key: "cadastrado",
-      width: 100,
+      width: 120,
       sorter: (a, b) => {
         const dateA = new Date(a.cadastrado.split("/").reverse().join("-"));
         const dateB = new Date(b.cadastrado.split("/").reverse().join("-"));
@@ -88,7 +122,7 @@ const LicencasPage: React.FC = () => {
     {
       title: "Ações",
       key: "acoes",
-      width: 80,
+      width: 120,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
@@ -96,6 +130,11 @@ const LicencasPage: React.FC = () => {
             type="link"
             icon={<EyeOutlined />}
             onClick={() => handleView(record)}
+          />
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
           />
           <Button
             type="link"
@@ -107,33 +146,6 @@ const LicencasPage: React.FC = () => {
       ),
     },
   ];
-
-  const handleView = (record: Licenca) => {
-    console.log("Visualizar licença:", record);
-    // Implementar lógica de visualização
-  };
-
-  const handleDelete = (id: string) => {
-    console.log("Excluir licença:", id);
-    // Implementar lógica de exclusão
-    setDataSource(dataSource.filter((item) => item.id !== id));
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    // Implementar lógica de busca
-  };
-
-  const handleAddLicense = () => {
-    router.push("/licencas/addlicencas");
-  };
-
-  // Filtrar dados baseado na busca
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
 
   return (
     <div>
@@ -154,20 +166,15 @@ const LicencasPage: React.FC = () => {
             prefix={<SearchOutlined />}
             allowClear
             style={{ width: 300 }}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
           />
-
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAddLicense}
-          >
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
             Nova Licença
           </Button>
         </Space>
       </div>
 
-      <Table<Licenca>
+      <Table<LicenseTableRow>
         columns={columns}
         dataSource={filteredData}
         loading={loading}
@@ -177,7 +184,6 @@ const LicencasPage: React.FC = () => {
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} licenças`,
         }}
-        scroll={{ x: 800 }}
         bordered
       />
     </div>

@@ -4,43 +4,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Descriptions } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-
-interface Mineradora {
-  key: string;
-  id: string;
-  nome: string;
-  processo: string;
-  concessao: string;
-  observacao: string;
-}
-
-// Dados de exemplo (mesmos da lista de mineradoras)
-const mockMineradoras: Mineradora[] = [
-  {
-    key: "2",
-    id: "2",
-    nome: "MINAS DIVERSAS (871.861/2006)",
-    processo: "871.861/2006",
-    concessao: "",
-    observacao: "ATIVA",
-  },
-  {
-    key: "3",
-    id: "3",
-    nome: "MINAS DIVERSAS (871.860/2006)",
-    processo: "871.860/2006",
-    concessao: "",
-    observacao: "ATIVA",
-  },
-  {
-    key: "4",
-    id: "4",
-    nome: "MINAS DIVERSAS (873.335/2006)",
-    processo: "873.335/2006",
-    concessao: "",
-    observacao: "ATIVA",
-  },
-];
+import { getMiningSiteById, getAllProcesses } from "../../actions";
+import { MiningSite } from "@/types/mining-site";
+import { capitalizeWords } from "@/utils/capitalize";
 
 const sectionStyle: React.CSSProperties = {
   backgroundColor: "#fafafa",
@@ -54,19 +20,34 @@ const ViewMineradoraPage: React.FC = () => {
   const router = useRouter();
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
-  const [mineradora, setMineradora] = useState<Mineradora | null>(null);
+  const [mineradora, setMineradora] = useState<MiningSite | null>(null);
+  const [processNumber, setProcessNumber] = useState<string>("");
 
   useEffect(() => {
-    const loadMineradora = () => {
-      setLoading(true);
-      const mineradoraData = mockMineradoras.find((m) => m.id === id);
-      setMineradora(mineradoraData || null);
-      setLoading(false);
+    if (!id) return;
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      getMiningSiteById(Number(id)),
+      getAllProcesses(),
+    ])
+      .then(([site, processes]) => {
+        if (cancelled) return;
+        setMineradora(site);
+        if (site?.processId) {
+          const process = processes.find((p) => p.id === site.processId);
+          setProcessNumber(process?.number ?? String(site.processId));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMineradora(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-
-    if (id) {
-      loadMineradora();
-    }
   }, [id]);
 
   const handleEdit = () => {
@@ -122,26 +103,36 @@ const ViewMineradoraPage: React.FC = () => {
       <section style={sectionStyle}>
         <Descriptions bordered column={1}>
           <Descriptions.Item label="Nome">
-            <strong>{mineradora.nome}</strong>
+            <strong>{capitalizeWords(mineradora.name)}</strong>
           </Descriptions.Item>
           <Descriptions.Item label="Processo">
-            {mineradora.processo}
+            {processNumber || "Não informado"}
           </Descriptions.Item>
           <Descriptions.Item label="Número de Concessão">
-            {mineradora.concessao || "Não informado"}
+            {mineradora.concessionNumber || "Não informado"}
           </Descriptions.Item>
           <Descriptions.Item label="Observação">
-            <span
-              style={{
-                padding: "4px 8px",
-                borderRadius: "4px",
-                backgroundColor: mineradora.observacao === "ATIVA" ? "#f6ffed" : "#fff2e8",
-                color: mineradora.observacao === "ATIVA" ? "#52c41a" : "#fa8c16",
-                fontWeight: 500,
-              }}
-            >
-              {mineradora.observacao}
-            </span>
+            {mineradora.observation ? (
+              <span
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: "4px",
+                  backgroundColor:
+                    mineradora.observation.toUpperCase() === "ATIVA"
+                      ? "#f6ffed"
+                      : "#fff2e8",
+                  color:
+                    mineradora.observation.toUpperCase() === "ATIVA"
+                      ? "#52c41a"
+                      : "#fa8c16",
+                  fontWeight: 500,
+                }}
+              >
+                {mineradora.observation}
+              </span>
+            ) : (
+              "Não informado"
+            )}
           </Descriptions.Item>
         </Descriptions>
       </section>

@@ -1,12 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { HookFormInput } from "@/components/hook-forms";
+import { createLicense } from "../actions";
+import { cleanLowerValue } from "@/utils/cleanLowerValue";
 
 interface LicencaFormValues {
-  licencaAmbiental: string;
+  nome: string;
+  codigo: string;
+  orgao: string;
 }
 
 const sectionStyle: React.CSSProperties = {
@@ -19,15 +24,34 @@ const sectionStyle: React.CSSProperties = {
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
 const AddLicencasPage: React.FC = () => {
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+
   const { control, handleSubmit } = useForm<LicencaFormValues>({
     defaultValues: {
-      licencaAmbiental: "",
+      nome: "",
+      codigo: "",
+      orgao: "",
     },
   });
 
-  const onSubmit = (data: LicencaFormValues) => {
-    console.log("Salvar licença:", data);
-    // Implementar lógica de persistência
+  const onSubmit = async (data: LicencaFormValues) => {
+    setSubmitting(true);
+    try {
+      await createLicense({
+        name: cleanLowerValue(data.nome) ?? "",
+        code: cleanLowerValue(data.codigo) ?? undefined,
+        authority: cleanLowerValue(data.orgao) ?? undefined,
+      });
+      message.success("Licença cadastrada com sucesso.");
+      router.push("/licencas");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao cadastrar licença."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -38,19 +62,40 @@ const AddLicencasPage: React.FC = () => {
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <section style={sectionStyle}>
-          <HookFormInput
-            name="licencaAmbiental"
-            control={control}
-            label="Licença Ambiental:"
-            placeholder="Digite a licença ambiental"
-            style={inputFullStyle}
-          />
+          <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
+            Dados
+          </h2>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="nome"
+              control={control}
+              label="*Nome:"
+              placeholder="Digite o nome da licença (ex.: licença ambiental)"
+              rules={{ required: "Nome é obrigatório" }}
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="codigo"
+              control={control}
+              label="Código:"
+              placeholder="Digite o código"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="orgao"
+              control={control}
+              label="Órgão:"
+              placeholder="Digite o órgão emissor"
+              style={inputFullStyle}
+            />
+          </div>
         </section>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
+        <Button type="primary" htmlType="submit" loading={submitting}>
           Salvar
         </Button>
       </form>

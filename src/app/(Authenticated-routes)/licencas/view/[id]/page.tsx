@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Descriptions } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { getProcessById } from "../../actions";
+import { getLicenseById } from "../../actions";
 import { capitalizeWords } from "@/utils/capitalize";
 
 const sectionStyle: React.CSSProperties = {
@@ -14,29 +14,29 @@ const sectionStyle: React.CSSProperties = {
   marginBottom: 24,
 };
 
-const ViewProcessoPage: React.FC = () => {
+const ViewLicencaPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
-  const [processo, setProcesso] = useState<{
+  const [licenca, setLicenca] = useState<{
     id: number;
-    number: string;
-    name?: string | null;
-    hectares?: string | null;
-    observation?: string | null;
+    name: string;
+    code?: string | null;
+    authority?: string | null;
+    createdAt?: string;
   } | null>(null);
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
-    getProcessById(Number(id))
+    getLicenseById(Number(id))
       .then((data) => {
-        if (!cancelled) setProcesso(data);
+        if (!cancelled) setLicenca(data);
       })
       .catch(() => {
-        if (!cancelled) setProcesso(null);
+        if (!cancelled) setLicenca(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -47,18 +47,18 @@ const ViewProcessoPage: React.FC = () => {
   }, [id]);
 
   const handleEdit = () => {
-    router.push(`/processos/edit/${id}`);
+    router.push(`/licencas/edit/${id}`);
   };
 
   const handleBack = () => {
-    router.push("/processos");
+    router.push("/licencas");
   };
 
   if (loading) {
     return <div>Carregando...</div>;
   }
 
-  if (!processo) {
+  if (!licenca) {
     return (
       <div>
         <Button
@@ -68,10 +68,14 @@ const ViewProcessoPage: React.FC = () => {
         >
           Voltar
         </Button>
-        <div>Processo não encontrado</div>
+        <div>Licença não encontrada</div>
       </div>
     );
   }
+
+  const cadastrado = licenca.createdAt
+    ? new Date(licenca.createdAt).toLocaleDateString("pt-BR")
+    : "Não informado";
 
   return (
     <div>
@@ -88,29 +92,27 @@ const ViewProcessoPage: React.FC = () => {
             Voltar
           </Button>
           <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 600 }}>
-            Detalhes do Processo
+            Detalhes da Licença
           </h1>
         </div>
         <Button type="primary" onClick={handleEdit}>
-          Editar Processo
+          Editar Licença
         </Button>
       </div>
 
       <section style={sectionStyle}>
         <Descriptions bordered column={1}>
           <Descriptions.Item label="Nome">
-            <strong>
-              {capitalizeWords(processo.name ?? processo.number)}
-            </strong>
+            <strong>{capitalizeWords(licenca.name)}</strong>
           </Descriptions.Item>
-          <Descriptions.Item label="Número">
-            {processo.number}
+          <Descriptions.Item label="Código">
+            {licenca.code || "Não informado"}
           </Descriptions.Item>
-          <Descriptions.Item label="Hectares">
-            {processo.hectares ?? "Não informado"}
+          <Descriptions.Item label="Órgão">
+            {licenca.authority || "Não informado"}
           </Descriptions.Item>
-          <Descriptions.Item label="Observação">
-            {processo.observation ?? "Não informado"}
+          <Descriptions.Item label="Cadastrado em">
+            {cadastrado}
           </Descriptions.Item>
         </Descriptions>
       </section>
@@ -118,4 +120,4 @@ const ViewProcessoPage: React.FC = () => {
   );
 };
 
-export default ViewProcessoPage;
+export default ViewLicencaPage;
