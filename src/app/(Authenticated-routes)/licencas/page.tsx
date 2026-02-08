@@ -20,6 +20,7 @@ import {
   mapLicenseToTableRow,
 } from "@/types/license";
 import { capitalizeWords } from "@/utils/capitalize";
+import { redirectToLoginIfUnauthorized } from "@/lib/auth";
 
 const LicencasPage: React.FC = () => {
   const router = useRouter();
@@ -33,6 +34,7 @@ const LicencasPage: React.FC = () => {
       const licenses = await getAllLicenses();
       setDataSource(licenses.map(mapLicenseToTableRow));
     } catch (error) {
+      if (redirectToLoginIfUnauthorized(error, router)) return;
       message.error(
         error instanceof Error ? error.message : "Falha ao carregar licenças."
       );
@@ -59,6 +61,7 @@ const LicencasPage: React.FC = () => {
       message.success("Licença excluída com sucesso.");
       await loadLicenses();
     } catch (error) {
+      if (redirectToLoginIfUnauthorized(error, router)) return;
       message.error(
         error instanceof Error ? error.message : "Falha ao excluir licença."
       );

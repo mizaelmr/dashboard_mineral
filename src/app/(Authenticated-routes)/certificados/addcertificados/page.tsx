@@ -11,45 +11,31 @@ import {
   newDeclaranteFormSchema,
   type NewDeclaranteFormSchema,
 } from "@/schemas/declarante.schema";
+import {
+  certificadoFormSchema,
+  type CertificadoFormSchema,
+} from "@/schemas/certificado.schema";
 import { mapNewDeclaranteToCreateDto } from "@/types/client";
 import { createClient, getClientsByType } from "../../clientes/actions";
 import { getAllMiningSites } from "../../mineradoras/actions";
+import { getAllSubstances } from "../../substancias/actions";
 import { capitalizeWords } from "@/utils/capitalize";
+import { usePesoValorCalculo } from "@/hooks/usePesoValorCalculo";
 
-interface CertificadoFormValues {
-  cliente: string;
-  declarante: string;
-  mineradora: string;
-  substancia: string;
-  unidadeMedida: string;
-  categoria: string;
-  peso: string;
-  valorPorPeso: string;
-  valorTotal: string;
-  descricao: string;
-  informacoesAdicionais: string;
-  descricaoImagem: string;
-}
 
 const quickDeclaranteOptions: SelectOption[] = [
   { value: "same_as_client", label: "Usar dados do cliente como declarante" },
   { value: "new_declarante", label: "Novo declarante" },
 ];
 
-const substanciasOptions: SelectOption[] = [
-  { value: "1", label: "ESMERALDA" },
-  { value: "2", label: "ALEXANDRITA" },
-  { value: "3", label: "MOLIBDENIO" },
-];
-
 const unidadesMedidaOptions: SelectOption[] = [
-  { value: "kg", label: "Kg" },
-  { value: "g", label: "g" },
-  { value: "t", label: "t" },
+  { value: "kg", label: "Kg - Quilogramas" },
+  { value: "ct", label: "Ct - Quilates" },
+  { value: "g", label: "G - Gramas" },
 ];
 
 const sectionStyle: React.CSSProperties = {
-  backgroundColor: "#fafafa",
+  backgroundColor: "#fff",
   padding: 24,
   borderRadius: 8,
   marginBottom: 24,
@@ -86,6 +72,10 @@ const AddCertificadosPage: React.FC = () => {
   const [clientsLoading, setClientsLoading] = useState(false);
   const [mineradorasOptions, setMineradorasOptions] = useState<SelectOption[]>([]);
   const [mineradorasLoading, setMineradorasLoading] = useState(false);
+  const [substanciasOptions, setSubstanciasOptions] = useState<SelectOption[]>([]);
+  const [substanciasLoading, setSubstanciasLoading] = useState(false);
+
+  const pesoValorCalc = usePesoValorCalculo();
 
   const loadClientsAndDeclarantes = (showLoading = true) => {
     if (showLoading) queueMicrotask(() => setClientsLoading(true));
@@ -129,12 +119,33 @@ const AddCertificadosPage: React.FC = () => {
       });
   };
 
+  const loadSubstances = (showLoading = true) => {
+    if (showLoading) queueMicrotask(() => setSubstanciasLoading(true));
+    getAllSubstances()
+      .then((substances) => {
+        setSubstanciasOptions(
+          substances.map((s) => ({
+            value: String(s.id),
+            label: capitalizeWords(s.name),
+          }))
+        );
+      })
+      .catch(() => {
+        message.error("Falha ao carregar substâncias.");
+      })
+      .finally(() => {
+        setSubstanciasLoading(false);
+      });
+  };
+
   useEffect(() => {
     loadClientsAndDeclarantes(true);
     loadMiningSites(true);
+    loadSubstances(true);
   }, []);
 
-  const { control, handleSubmit } = useForm<CertificadoFormValues>({
+  const { control, handleSubmit, setValue } = useForm<CertificadoFormSchema>({
+    resolver: zodResolver(certificadoFormSchema),
     defaultValues: {
       cliente: "",
       declarante: "",
@@ -144,18 +155,50 @@ const AddCertificadosPage: React.FC = () => {
       categoria: "",
       peso: "0,00000",
       valorPorPeso: "0,0000",
-      valorTotal: "0.00",
+      valorTotal: "0,00",
       descricao: "",
       informacoesAdicionais: "",
       descricaoImagem: "",
     },
   });
 
+  useEffect(() => {
+    setValue("peso", pesoValorCalc.peso);
+    setValue("valorPorPeso", pesoValorCalc.valorPorPeso);
+    setValue("valorTotal", pesoValorCalc.valorTotal);
+  }, [pesoValorCalc.peso, pesoValorCalc.valorPorPeso, pesoValorCalc.valorTotal, setValue]);
+
   const declaranteValue = useWatch({ control, name: "declarante" });
   const showNewDeclaranteButton = declaranteValue === "new_declarante";
 
-  const onSubmit = (data: CertificadoFormValues) => {
-    console.log("Salvar certificado:", data);
+  const resolveDeclaranteId = (data: CertificadoFormSchema): number | null => {
+    if (data.declarante === "same_as_client") {
+      return data.cliente ? Number(data.cliente) : null;
+    }
+    if (data.declarante === "new_declarante" || data.declarante === "") {
+      return null;
+    }
+    return Number(data.declarante);
+  };
+
+  const onSubmit = (data: CertificadoFormSchema) => {
+    const declaranteId = resolveDeclaranteId(data);
+    if (declaranteId == null) return;
+    const payload = {
+      clienteId: Number(data.cliente),
+      declaranteId,
+      mineradoraId: Number(data.mineradora),
+      substanciaId: Number(data.substancia),
+      unidadeMedida: data.unidadeMedida,
+      categoria: data.categoria,
+      peso: data.peso,
+      valorPorPeso: data.valorPorPeso,
+      valorTotal: data.valorTotal,
+      descricao: data.descricao,
+      informacoesAdicionais: data.informacoesAdicionais,
+      descricaoImagem: data.descricaoImagem,
+    };
+    console.log("Salvar certificado:", payload);
   };
 
   const newDeclaranteForm = useForm<NewDeclaranteFormSchema>({
@@ -191,10 +234,7 @@ const AddCertificadosPage: React.FC = () => {
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <section style={sectionStyle}>
-          <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
-            Cadastro de certificado de origem
-          </h2>
-          
+        
           <div style={gridRow2Style}>
             <HookFormSelect
               name="cliente"
@@ -202,7 +242,6 @@ const AddCertificadosPage: React.FC = () => {
               label="*Cliente:"
               options={clientesOptions}
               placeholder="Selecione um Cliente"
-              rules={{ required: "Cliente é obrigatório" }}
               style={inputFullStyle}
               loading={clientsLoading}
             />
@@ -212,7 +251,7 @@ const AddCertificadosPage: React.FC = () => {
               render={({ field, fieldState }) => (
                 <div>
                   <label htmlFor="declarante" style={{ display: "block", marginBottom: 4 }}>
-                    Declarante:
+                    *Declarante:
                   </label>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                     <Select
@@ -261,7 +300,6 @@ const AddCertificadosPage: React.FC = () => {
                 label="*Mineradora:"
                 options={mineradorasOptions}
                 placeholder="Selecione uma Mineradora"
-                rules={{ required: "Mineradora é obrigatória" }}
                 style={inputFullStyle}
                 loading={mineradorasLoading}
               />
@@ -275,7 +313,6 @@ const AddCertificadosPage: React.FC = () => {
                 control={control}
                 label="*Categoria:"
                 placeholder="Digite a categoria do produto"
-                rules={{ required: "Categoria é obrigatória" }}
                 style={inputFullStyle}
               />
             </Col>
@@ -285,9 +322,9 @@ const AddCertificadosPage: React.FC = () => {
                 control={control}
                 label="*Substância:"
                 options={substanciasOptions}
-                placeholder="selecione"
-                rules={{ required: "Substância é obrigatória" }}
+                placeholder="Selecione uma substância"
                 style={inputFullStyle}
+                loading={substanciasLoading}
               />
             </Col>
             <Col span={8}>
@@ -297,7 +334,6 @@ const AddCertificadosPage: React.FC = () => {
                 label="*Unidade de Medida:"
                 options={unidadesMedidaOptions}
                 placeholder="Selecione uma Unidade"
-                rules={{ required: "Unidade de Medida é obrigatória" }}
                 style={inputFullStyle}
               />
             </Col>
@@ -305,33 +341,78 @@ const AddCertificadosPage: React.FC = () => {
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={8}>
-              <HookFormInput
+              <Controller
                 name="peso"
                 control={control}
-                label="*Peso (Kg):"
-                placeholder="0,00000"
-                rules={{ required: "Peso é obrigatório" }}
-                style={inputFullStyle}
+                render={({ fieldState }) => (
+                  <div>
+                    <label style={{ display: "block", marginBottom: 4 }}>
+                      *Peso (Kg):
+                    </label>
+                    <Input
+                      value={pesoValorCalc.peso}
+                      onChange={pesoValorCalc.handlePesoChange}
+                      placeholder="0,00000"
+                      style={inputFullStyle}
+                      status={fieldState.invalid ? "error" : undefined}
+                    />
+                    {fieldState.error?.message && (
+                      <span style={{ fontSize: 12, color: "#ff4d4f", marginTop: 4, display: "block" }}>
+                        {fieldState.error.message}
+                      </span>
+                    )}
+                  </div>
+                )}
               />
             </Col>
             <Col span={8}>
-              <HookFormInput
+              <Controller
                 name="valorPorPeso"
                 control={control}
-                label="*Valor por peso (R$/Kg):"
-                placeholder="0,0000"
-                rules={{ required: "Valor por peso é obrigatório" }}
-                style={inputFullStyle}
+                render={({ fieldState }) => (
+                  <div>
+                    <label style={{ display: "block", marginBottom: 4 }}>
+                      *Valor por peso (R$/Kg):
+                    </label>
+                    <Input
+                      value={pesoValorCalc.valorPorPeso}
+                      onChange={pesoValorCalc.handleValorPorPesoChange}
+                      placeholder="0,0000"
+                      style={inputFullStyle}
+                      status={fieldState.invalid ? "error" : undefined}
+                    />
+                    {fieldState.error?.message && (
+                      <span style={{ fontSize: 12, color: "#ff4d4f", marginTop: 4, display: "block" }}>
+                        {fieldState.error.message}
+                      </span>
+                    )}
+                  </div>
+                )}
               />
             </Col>
             <Col span={8}>
-              <HookFormInput
+              <Controller
                 name="valorTotal"
                 control={control}
-                label="*Valor total (R$):"
-                placeholder="0.00"
-                rules={{ required: "Valor total é obrigatório" }}
-                style={inputFullStyle}
+                render={({ fieldState }) => (
+                  <div>
+                    <label style={{ display: "block", marginBottom: 4 }}>
+                      *Valor total (R$):
+                    </label>
+                    <Input
+                      value={pesoValorCalc.valorTotal}
+                      onChange={pesoValorCalc.handleValorTotalChange}
+                      placeholder="0,00"
+                      style={inputFullStyle}
+                      status={fieldState.invalid ? "error" : undefined}
+                    />
+                    {fieldState.error?.message && (
+                      <span style={{ fontSize: 12, color: "#ff4d4f", marginTop: 4, display: "block" }}>
+                        {fieldState.error.message}
+                      </span>
+                    )}
+                  </div>
+                )}
               />
             </Col>
           </Row>
@@ -340,7 +421,6 @@ const AddCertificadosPage: React.FC = () => {
             <Controller
               name="descricao"
               control={control}
-              rules={{ required: "Descrição é obrigatória" }}
               render={({ field, fieldState }) => (
                 <div>
                   <label style={{ display: "block", marginBottom: 4 }}>

@@ -8,6 +8,7 @@ import {
   apiDelete,
   ApiClientError,
 } from '@/lib/api-client';
+import { UNAUTHORIZED_MESSAGE } from '@/lib/auth';
 import {
   License,
   CreateLicenseDto,
@@ -25,6 +26,9 @@ export async function getAllLicenses(): Promise<License[]> {
     const token = await getToken();
     return await apiGet<License[]>('/licenses', token);
   } catch (error) {
+    if (error instanceof ApiClientError && error.statusCode === 401) {
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     if (error instanceof ApiClientError) {
       throw new Error(error.message);
     }
@@ -45,6 +49,9 @@ export async function searchLicenses(params: {
     const endpoint = query ? `/licenses/search?${query}` : '/licenses';
     return await apiGet<License[]>(endpoint, token);
   } catch (error) {
+    if (error instanceof ApiClientError && error.statusCode === 401) {
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     if (error instanceof ApiClientError) {
       throw new Error(error.message);
     }
@@ -57,6 +64,9 @@ export async function getLicenseById(id: number): Promise<License | null> {
     const token = await getToken();
     return await apiGet<License>(`/licenses/${id}`, token);
   } catch (error) {
+    if (error instanceof ApiClientError && error.statusCode === 401) {
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     if (error instanceof ApiClientError && error.statusCode === 404) {
       return null;
     }
@@ -74,6 +84,9 @@ export async function createLicense(
     const token = await getToken();
     return await apiPost<License>('/licenses', data, token);
   } catch (error) {
+    if (error instanceof ApiClientError && error.statusCode === 401) {
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     if (error instanceof ApiClientError) {
       throw new Error(error.message);
     }
@@ -89,6 +102,9 @@ export async function updateLicense(
     const token = await getToken();
     return await apiPatch<License>(`/licenses/${id}`, data, token);
   } catch (error) {
+    if (error instanceof ApiClientError && error.statusCode === 401) {
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     if (error instanceof ApiClientError) {
       if (error.statusCode === 404) {
         throw new Error('Licença não encontrada.');
@@ -104,6 +120,9 @@ export async function deleteLicense(id: number): Promise<void> {
     const token = await getToken();
     await apiDelete<void>(`/licenses/${id}`, token);
   } catch (error) {
+    if (error instanceof ApiClientError && error.statusCode === 401) {
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     if (error instanceof ApiClientError) {
       if (error.statusCode === 404) {
         throw new Error('Licença não encontrada.');

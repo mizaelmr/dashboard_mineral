@@ -76,27 +76,27 @@ const ClientesPage: React.FC = () => {
       title: "CPF/CNPJ",
       dataIndex: "cpfCnpj",
       key: "cpfCnpj",
-      width: 150,
+      width: 80,
     },
     {
       title: "Email",
       dataIndex: "email",
       key: "email",
-      width: 200,
+      width: 120,
       ellipsis: true,
     },
     {
       title: "Celular",
       dataIndex: "celular",
       key: "celular",
-      width: 130,
+      width: 80,
       render: (text: string) => formatPhone(text),
     },
     {
       title: "Ações",
       key: "acoes",
-      width: 120,
-      fixed: "right",
+      width: 70,
+      // fixed: "right",
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -200,7 +200,6 @@ const ClientesPage: React.FC = () => {
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} clientes`,
         }}
-        scroll={{ x: 1180 }}
         bordered
       />
     </div>

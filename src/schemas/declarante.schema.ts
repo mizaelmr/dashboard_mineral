@@ -52,6 +52,7 @@ export const newDeclaranteFormSchema = z
           message: "CPF deve ter 11 dígitos.",
           path: ["cpf"],
         });
+      }
       if (cpfDigits.length === 11 && nome.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

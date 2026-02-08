@@ -1,4 +1,21 @@
+import { message } from 'antd';
+
 const TOKEN_KEY = 'auth_token';
+
+export const UNAUTHORIZED_MESSAGE = 'UNAUTHORIZED';
+
+export function redirectToLoginIfUnauthorized(
+  error: unknown,
+  router: { push: (url: string) => void }
+): boolean {
+  if (error instanceof Error && error.message === UNAUTHORIZED_MESSAGE) {
+    message.info('Sua sessão expirou. Por favor, faça login novamente para continuar.');
+    removeToken();
+    router.push('/login');
+    return true;
+  }
+  return false;
+}
 
 export const getToken = (): string | null => {
   if (typeof window === 'undefined') {
