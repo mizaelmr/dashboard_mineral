@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
-import { Card, Row, Col, Button, Space } from "antd";
+import { Card, Row, Col, Button, Space, message } from "antd";
 import { HookFormDatePicker, HookFormSelect } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
 import Table, { TableColumn } from "@/components/Table";
 import dayjs from "dayjs";
+import { getClientsByType } from "../../clientes/actions";
+import { capitalizeWords } from "@/utils/capitalize";
+import type { Client, Address } from "@/types/client";
 
 interface RelatorioClientesFilterValues {
   dataInicio: dayjs.Dayjs | null;
@@ -26,14 +29,56 @@ interface RelatorioNotaRow {
   valorFinal: string;
 }
 
-const clientesOptions: SelectOption[] = [
-  { value: "1", label: "João Silva" },
-  { value: "2", label: "Maria Santos" },
-  { value: "3", label: "Empresa Mineração LTDA" },
-];
+function formatAddressShort(addr: Address | null | undefined): string {
+  if (!addr) return "-";
+  const parts: string[] = [];
+  if (addr.street) parts.push(capitalizeWords(addr.street));
+  if (addr.number) parts.push(addr.number);
+  if (addr.neighborhood) parts.push(capitalizeWords(addr.neighborhood));
+  if (addr.city) parts.push(capitalizeWords(addr.city));
+  if (addr.state) parts.push(addr.state);
+  return parts.length ? parts.join(", ") : "-";
+}
+
+function clientToReportRow(client: Client, index: number): RelatorioNotaRow {
+  return {
+    key: String(client.id),
+    index: index + 1,
+    cliente: capitalizeWords(client.name),
+    endereco: formatAddressShort(client.address),
+    descricao: "-",
+    dataGerada: "-",
+    valorPeso: "-",
+    valorKLg: "-",
+    valorFinal: "-",
+  };
+}
 
 const RelatorioClientesPage: React.FC = () => {
   const [dataSource, setDataSource] = useState<RelatorioNotaRow[]>([]);
+  const [clientesOptions, setClientesOptions] = useState<SelectOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
+
+  const loadClients = useCallback(async () => {
+    setOptionsLoading(true);
+    try {
+      const clients = await getClientsByType(1);
+      setClientesOptions(
+        clients.map((c) => ({ value: String(c.id), label: capitalizeWords(c.name) }))
+      );
+      return clients;
+    } catch {
+      message.error("Falha ao carregar clientes.");
+      return [];
+    } finally {
+      setOptionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadClients();
+  }, [loadClients]);
 
   const { control, handleSubmit } = useForm<RelatorioClientesFilterValues>({
     defaultValues: {
@@ -43,9 +88,21 @@ const RelatorioClientesPage: React.FC = () => {
     },
   });
 
-  const onFiltrar = (data: RelatorioClientesFilterValues) => {
-    console.log("Filtrar:", data);
-    setDataSource([]);
+  const onFiltrar = async (data: RelatorioClientesFilterValues) => {
+    setTableLoading(true);
+    try {
+      const clients = await getClientsByType(1);
+      let filtered = clients;
+      if (data.cliente) {
+        filtered = clients.filter((c) => String(c.id) === data.cliente);
+      }
+      setDataSource(filtered.map((c, i) => clientToReportRow(c, i)));
+    } catch {
+      message.error("Falha ao filtrar clientes.");
+      setDataSource([]);
+    } finally {
+      setTableLoading(false);
+    }
   };
 
   const onImprimir = () => {
@@ -94,6 +151,7 @@ const RelatorioClientesPage: React.FC = () => {
                 options={clientesOptions}
                 placeholder="Selecione um Cliente"
                 style={{ width: 280 }}
+                loading={optionsLoading}
               />
             </Col>
             <Col>
@@ -112,6 +170,7 @@ const RelatorioClientesPage: React.FC = () => {
         columns={columns}
         dataSource={dataSource}
         rowKey="key"
+        loading={tableLoading}
         locale={{ emptyText: "Não a dados!" }}
         pagination={false}
       />

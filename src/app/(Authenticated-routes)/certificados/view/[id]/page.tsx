@@ -9,17 +9,18 @@ import { useReactToPrint } from "react-to-print";
 import {
   A4Sheet,
   A4SheetContainer,
-  BoxButtons
-  , BoxButtonsActions,
+  BoxButtons,
+  BoxButtonsActions,
   BoxData,
-  BoxInfoCooperativa
-  , BoxLabel, BoxLegalInfo,
-  BoxLegalInfoText, BoxQrcodeImg, BoxSignature,
+  BoxInfoCooperativa,
+  BoxLabel,
+  BoxLegalInfo,
+  BoxLegalInfoText,
+  BoxQrcodeImg,
+  BoxSignature,
   BoxValue,
   BoxValueCooperativa,
-  CertificateQrcode,
   ContainerA4,
-  DataQrCode,
   DateAndTime,
   LabelAdditionalInfo,
   LabelCooperativa,
@@ -28,127 +29,73 @@ import {
   Signature,
   TextQrCode,
   TextQrCodeBold,
-  ValueCooperativa
+  ValueCooperativa,
 } from "./styles";
+import { getCertificateById, getStorageSignedUrl } from "../../actions";
+import { getClientById } from "../../../clientes/actions";
+import { getMandateById, getPresidentById } from "../../../presidentes/actions";
+import { getMiningSiteById } from "../../../mineradoras/actions";
+import { getProcessById } from "../../../processos/actions";
+import { getAllLicenses } from "../../../licencas/actions";
+import { mockDadosEmpresa } from "../../../dados-empresa/page";
+import { capitalizeWords } from "@/utils/capitalize";
+import { formatDocument } from "@/utils/documents";
+import type { Client } from "@/types/client";
 
-interface Certificado {
-  key: string;
-  id: string;
-  cliente: string;
-  descricao: string;
-  dataGerada: string;
-  valor: string;
+function formatClientAddress(client: Client | null): string {
+  if (!client?.address) return "-";
+  const a = client.address;
+  const streetPart = [a.street, a.number].filter(Boolean).join(", ");
+  const cityStatePart = [a.city, a.state].filter(Boolean).join(" / ");
+  const parts = [
+    streetPart ? capitalizeWords(streetPart) : "",
+    a.complement ? capitalizeWords(a.complement) : "",
+    a.neighborhood ? capitalizeWords(a.neighborhood) : "",
+    cityStatePart ? capitalizeWords(cityStatePart) : "",
+    a.zip ? `CEP ${a.zip}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" - ") : "-";
+}
+
+function formatClientContact(client: Client | null): string {
+  if (!client?.contact) return "-";
+  const c = client.contact;
+  return (c.mobile || c.phone || c.email || "-").trim() || "-";
+}
+
+function displayCapitalized(value: string): string {
+  if (value == null || value.trim() === "" || value === "-") return value || "-";
+  return capitalizeWords(value);
 }
 
 interface CertificadoDetalhes {
-  // Informações da Cooperativa
+  nomeCooperativa: string;
   cnpjCooperativa: string;
   ieCooperativa: string;
   enderecoCooperativa: string;
   telefoneCooperativa: string;
   codigoVerificacao: string;
   numeroCertificado: string;
-
-  // Informações do Declarante/Cliente
   nomeCliente: string;
   razaoSocial: string;
   cnpjCliente: string;
   contatoCliente: string;
-
-  // Informações de Endereço e Processo
   enderecoCliente: string;
   processoANM: string;
   mineracao: string;
   area: string;
-
-  // Informações do Certificado
   processosDNPM: string[];
   licencaAmbiental: string;
   dataLicenca: string;
-
-  // Informações da Licença
   descricaoCaracterizacao: string;
   tipo: string;
   peso: string;
   informacoesAdicionais: string;
-
-  // Informações do Declarante
   nomeDeclarante: string;
   cpfDeclarante: string;
-
-  // Informações do Presidente
   nomePresidente: string;
+  imageUrl?: string | null;
 }
-
-// Dados de exemplo (mesmos da lista de certificados)
-const mockCertificados: Certificado[] = [
-  {
-    key: "1",
-    id: "3186",
-    cliente: "TIME INVEST ADMINISTRAÇÃO E PARTICIPAÇÕES EIRELI-ME",
-    descricao: "CANGA DE ESMERALDA",
-    dataGerada: "2026-01-21 15:48:37",
-    valor: "R$ 6.000,00",
-  },
-  {
-    key: "2",
-    id: "3185",
-    cliente: "YUSO ANTÔNIO VIEIRA COSTA",
-    descricao: "ESMERALDA BRUTA",
-    dataGerada: "2026-01-15 14:05:11",
-    valor: "R$ 1.260,00",
-  },
-  {
-    key: "3",
-    id: "3184",
-    cliente: "RICARDO NAZARENO CAMPELO SIQUEIRA",
-    descricao: "ESMERALDA BRUTA",
-    dataGerada: "2026-01-14 14:31:35",
-    valor: "R$ 1.000,00",
-  },
-  {
-    key: "4",
-    id: "3183",
-    cliente: "LEONARDO DA SILVA GOMES",
-    descricao: "ESMERALDA BRUTA",
-    dataGerada: "2026-01-14 14:07:51",
-    valor: "R$ 496,00",
-  },
-];
-
-// Função para buscar dados completos do certificado (simular API)
-const fetchCertificadoDetalhes = (id: string): CertificadoDetalhes | null => {
-  const certificado = mockCertificados.find((c) => c.id === id);
-  if (!certificado) return null;
-
-  // Simular dados completos
-  return {
-    cnpjCooperativa: "08.020.967/0001-47",
-    ieCooperativa: "69.031.374-NO",
-    enderecoCooperativa: "RUA PETROLINA, 215, SERRA DA CARNAIBA - PINDOBAÇU - BA Pindobaçu / BA - 44770-000",
-    telefoneCooperativa: "(74) 99961-1561",
-    codigoVerificacao: "6973885c50dc3",
-    numeroCertificado: "3189/2026",
-    nomeCliente: certificado.cliente || "QUARTZO CAMPO FORMOSO EIRELI",
-    razaoSocial: "QUARTZO CAMPO FORMOSO EIRELI",
-    cnpjCliente: "30.777.096/0001-60",
-    contatoCliente: "-",
-    enderecoCliente: "RUA JAGUARARI, 70, Campo Formoso / BA 44790-000",
-    processoANM: "871.861/2006",
-    mineracao: "MINAS DIVERSAS (871.861/2006)",
-    area: "923,25",
-    processosDNPM: ["871.860/2006", "871.861/2006", "873.335/2006"],
-    licencaAmbiental: "INEMA 499 D.O.E",
-    dataLicenca: "01/07/2011",
-    descricaoCaracterizacao: certificado.descricao || "CASCALHO DE ESMERALDA",
-    tipo: "D",
-    peso: "10.000,00000",
-    informacoesAdicionais: certificado.descricao || "CASCALHO DE ESMERALDA",
-    nomeDeclarante: "CESAR WELLINGTON MONTEIRO DE MENEZES",
-    cpfDeclarante: "237.573.105-00",
-    nomePresidente: "Humberto Alves de Meneses",
-  };
-};
 
 const ViewCertificadoPage: React.FC = () => {
   const params = useParams();
@@ -159,16 +106,83 @@ const ViewCertificadoPage: React.FC = () => {
   const componentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const loadCertificado = () => {
-      setLoading(true);
-      const certificadoData = fetchCertificadoDetalhes(id);
-      setCertificado(certificadoData || null);
+    let cancelled = false;
+    if (!id) {
       setLoading(false);
-    };
-
-    if (id) {
-      loadCertificado();
+      return;
     }
+    setLoading(true);
+    getCertificateById(Number(id))
+      .then(async (cert) => {
+        if (cancelled || !cert) return null;
+        const [clientData, mandate, miningSite, licenses] = await Promise.all([
+          getClientById(cert.client_id).catch(() => null),
+          cert.mandateId ? getMandateById(cert.mandateId).catch(() => null) : Promise.resolve(null),
+          cert.miningSiteId ? getMiningSiteById(cert.miningSiteId).catch(() => null) : Promise.resolve(null),
+          getAllLicenses().catch(() => []),
+        ]);
+        const [president, process] = await Promise.all([
+          mandate?.presidentId ? getPresidentById(mandate.presidentId).catch(() => null) : Promise.resolve(null),
+          miningSite?.processId ? getProcessById(miningSite.processId).catch(() => null) : Promise.resolve(null),
+        ]);
+        let imageUrl: string | null = null;
+        if (cert.imageS3Key) {
+          try {
+            imageUrl = await getStorageSignedUrl(cert.imageS3Key);
+          } catch {
+            imageUrl = null;
+          }
+        }
+        const empresa = mockDadosEmpresa;
+        const clientName = clientData ? capitalizeWords((clientData.name ?? "").trim()) : String(cert.client_id);
+        const razaoSocial = clientData ? (clientData.legalName ? capitalizeWords((clientData.legalName ?? "").trim()) : clientName) : "-";
+        const firstLicense = licenses.length > 0 ? licenses[0] : null;
+        const pesoStr =
+          cert.weight != null
+            ? Number(cert.weight).toLocaleString("pt-BR", { minimumFractionDigits: 5 })
+            : "";
+        return {
+          nomeCooperativa: empresa.nome,
+          cnpjCooperativa: empresa.cnpj,
+          ieCooperativa: empresa.ie,
+          enderecoCooperativa: capitalizeWords([empresa.endereco, empresa.numero, empresa.bairro].filter(Boolean).join(", ") || "-"),
+          telefoneCooperativa: empresa.fone1 || empresa.fone2 || "-",
+          codigoVerificacao: cert.verificationCode ?? "-",
+          numeroCertificado: cert.displayNumber ?? String(cert.id),
+          nomeCliente: clientName,
+          razaoSocial,
+          cnpjCliente: clientData ? formatDocument(clientData.documentNumber, clientData.documentType as "CPF" | "CNPJ") || "-" : "-",
+          contatoCliente: formatClientContact(clientData) !== "-" ? capitalizeWords(formatClientContact(clientData).trim()) : "-",
+          enderecoCliente: formatClientAddress(clientData),
+          processoANM: process?.number ?? "-",
+          mineracao: miningSite ? capitalizeWords(miningSite.name) : "-",
+          area: process?.hectares ?? "-",
+          processosDNPM: process?.number ? [process.number] : [],
+          licencaAmbiental: firstLicense ? capitalizeWords(firstLicense.name || firstLicense.code || "-") : "-",
+          dataLicenca: firstLicense?.createdAt ? new Date(firstLicense.createdAt).toLocaleDateString("pt-BR") : "-",
+          descricaoCaracterizacao: cert.description ? capitalizeWords(cert.description) : "-",
+          tipo: cert.productType ? capitalizeWords(cert.productType) : "-",
+          peso: pesoStr,
+          informacoesAdicionais: cert.observation ? capitalizeWords(cert.observation) : "-",
+          nomeDeclarante: clientName,
+          cpfDeclarante: clientData ? formatDocument(clientData.documentNumber, clientData.documentType as "CPF" | "CNPJ") || "-" : "-",
+          nomePresidente: president ? capitalizeWords(president.name ?? "") : "-",
+          imageUrl,
+        } as CertificadoDetalhes;
+      })
+      .then((data) => {
+        if (!cancelled && data) setCertificado(data);
+        else if (!cancelled) setCertificado(null);
+      })
+      .catch(() => {
+        if (!cancelled) setCertificado(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
 
@@ -241,174 +255,139 @@ const ViewCertificadoPage: React.FC = () => {
           ref={componentRef}
         >
           <A4Sheet>
-            {/* Header */}
-            <Row gutter={16}>
-              {/* Logo e Nome da Cooperativa */}
-              <Col span={8}>
-                <Image src="/logo_cmb.png" alt="Logo da Cooperativa" width={200} height={80} unoptimized />
+            <Row gutter={20} style={{ marginBottom: 12, alignItems: "center", display: "flex", flexWrap: "nowrap" }}>
+              <Col xs={24} md={6} style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div style={{ width: 120, height: 48, backgroundColor: "#e8e8e8", borderRadius: 4 }} />
               </Col>
-
-              {/* Informações da Cooperativa */}
-              <Col span={12}>
-                <BoxInfoCooperativa>
-                  <NameCooperativa>
-                    COOPERATIVA MINERAL DA BAHIA
-                  </NameCooperativa>
-                  <BoxValueCooperativa>
-                    <LabelCooperativa>CNPJ:</LabelCooperativa>
-                    <ValueCooperativa>{certificado.cnpjCooperativa} - I.E: {certificado.ieCooperativa}</ValueCooperativa>
-                  </BoxValueCooperativa>
-                  <BoxValueCooperativa>
-                    <LabelCooperativa>Endereço:</LabelCooperativa>
-                    <ValueCooperativa>{certificado.enderecoCooperativa}</ValueCooperativa>
-                  </BoxValueCooperativa>
-                  <BoxValueCooperativa>
-                    <LabelCooperativa>Telefone:</LabelCooperativa>
-                    <ValueCooperativa>{certificado.telefoneCooperativa}</ValueCooperativa>
-                  </BoxValueCooperativa>
-                </BoxInfoCooperativa>
+              <Col xs={24} md={10} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <NameCooperativa style={{ marginBottom: 2 }}>{certificado.nomeCooperativa}</NameCooperativa>
+                <BoxValueCooperativa style={{ justifyContent: "center" }}>
+                  <ValueCooperativa>{certificado.cnpjCooperativa} - I.E: {certificado.ieCooperativa}</ValueCooperativa>
+                </BoxValueCooperativa>
+                <BoxValueCooperativa style={{ justifyContent: "center" }}>
+                  <ValueCooperativa>{certificado.enderecoCooperativa}</ValueCooperativa>
+                </BoxValueCooperativa>
+                <BoxValueCooperativa style={{ justifyContent: "center" }}>
+                  <ValueCooperativa>{certificado.telefoneCooperativa}</ValueCooperativa>
+                </BoxValueCooperativa>
               </Col>
-
-              {/* QR Code no Header */}
-              <Col span={4}>
+              <Col xs={24} md={8} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
                 <BoxQrcodeImg>
-                  <Image src="/qrcode.png" alt="QR Code" width={100} height={100} unoptimized />
+                  <Image src="/qrcode.png" alt="QR Code" width={64} height={64} unoptimized />
                 </BoxQrcodeImg>
-                <TextQrCode>
-                  {certificado.numeroCertificado}
-                </TextQrCode>
-                <TextQrCodeBold>
-                  {certificado.codigoVerificacao}
-                </TextQrCodeBold>
+                <TextQrCode style={{ marginTop: 2 }}>{certificado.numeroCertificado}</TextQrCode>
+                <TextQrCodeBold>{certificado.codigoVerificacao}</TextQrCodeBold>
               </Col>
             </Row>
 
-            {/* Conteúdo Principal - Três Colunas */}
-            <Row gutter={12} style={{ marginBottom: 20 }}>
-              {/* Coluna Esquerda - Dados do Cliente */}
-              <Col span={10}>
+            <Row gutter={20} style={{ alignItems: "flex-start", marginBottom: 10 }}>
+              <Col xs={24} md={14}>
                 <BoxData>
-                  <BoxLabel>NOME/NAME:</BoxLabel>
-                  <BoxValue>{certificado.nomeCliente}</BoxValue>
+                  <BoxLabel>Nome / Name:</BoxLabel>
+                  <BoxValue>{displayCapitalized(certificado.nomeCliente)}</BoxValue>
                 </BoxData>
                 <BoxData>
-                  <BoxLabel>RAZÃO SOCIAL/SOCIAL REASON:</BoxLabel>
-                  <BoxValue>{certificado.razaoSocial}</BoxValue>
+                  <BoxLabel>Razão Social / Social Reason:</BoxLabel>
+                  <BoxValue>{displayCapitalized(certificado.razaoSocial)}</BoxValue>
                 </BoxData>
                 <BoxData>
                   <BoxLabel>CNPJ:</BoxLabel>
                   <BoxValue>{certificado.cnpjCliente}</BoxValue>
                 </BoxData>
                 <BoxData>
-                  <BoxLabel>CONTATO/CONTACT:</BoxLabel>
-                  <BoxValue>{certificado.contatoCliente}</BoxValue>
+                  <BoxLabel>Contato / Contact:</BoxLabel>
+                  <BoxValue>{displayCapitalized(certificado.contatoCliente)}</BoxValue>
+                </BoxData>
+                <BoxData>
+                  <BoxLabel>Endereço / Address:</BoxLabel>
+                  <BoxValue>{displayCapitalized(certificado.enderecoCliente)}</BoxValue>
                 </BoxData>
               </Col>
-
-              {/* Coluna Meio - Endereço e Processo */}
-              <Col span={10}>
+              <Col xs={24} md={10}>
                 <BoxData>
-                  <BoxLabel>ENDEREÇO/ADDRESS:</BoxLabel>
-                  <BoxValue>{certificado.enderecoCliente}</BoxValue>
+                  <BoxLabel>Extração Mineral - Certificado de Origem</BoxLabel>
+                  <BoxValue>&nbsp;</BoxValue>
                 </BoxData>
                 <BoxData>
-                  <BoxLabel>PROCESSO/PROCESS ANM N°:</BoxLabel>
+                  <BoxLabel>PLGs:</BoxLabel>
+                  <BoxValue>{displayCapitalized("Permissão de Lavra Garimpeira")}</BoxValue>
+                </BoxData>
+                <BoxData>
+                  <BoxLabel>Processos Dnpm:</BoxLabel>
+                  <BoxValue>{certificado.processosDNPM.length > 0 ? certificado.processosDNPM.join(", ") : "-"}</BoxValue>
+                </BoxData>
+                <BoxData>
+                  <BoxLabel>Licença Ambiental:</BoxLabel>
+                  <BoxValue>{displayCapitalized(certificado.licencaAmbiental)}{certificado.dataLicenca ? ` - ${certificado.dataLicenca}` : ""}</BoxValue>
+                </BoxData>
+                <BoxData>
+                  <BoxLabel>Processo / Process ANM Nº:</BoxLabel>
                   <BoxValue>{certificado.processoANM}</BoxValue>
                 </BoxData>
                 <BoxData>
-                  <BoxLabel>MINERAÇÃO/MINING:</BoxLabel>
-                  <BoxValue>{certificado.mineracao}</BoxValue>
+                  <BoxLabel>Mineração / Mining:</BoxLabel>
+                  <BoxValue>{displayCapitalized(certificado.mineracao)}</BoxValue>
                 </BoxData>
                 <BoxData>
-                  <BoxLabel>ÁREA/AREA - ha:</BoxLabel>
+                  <BoxLabel>Área / Area - ha:</BoxLabel>
                   <BoxValue>{certificado.area}</BoxValue>
                 </BoxData>
               </Col>
-
-              {/* Coluna Direita - Certificado de Origem */}
-              <Col span={4}>
-                <CertificateQrcode>
-                  Extração Mineral CERTIFICADO DE ORIGEM
-                </CertificateQrcode>
-                <DataQrCode>
-                  PLGs - Permissão de Lavra Garimpeira
-                </DataQrCode>
-                <CertificateQrcode >
-                  Processos DNPM:
-                </CertificateQrcode>
-                {certificado.processosDNPM.map((processo, index) => (
-                  <DataQrCode key={index}>
-                    {processo}
-                  </DataQrCode>
-                ))}
-                <CertificateQrcode>
-                  LICENÇA AMBIENTAL:
-                </CertificateQrcode>
-                <DataQrCode >
-                  {certificado.licencaAmbiental}
-                </DataQrCode>
-                <DataQrCode>
-                  {certificado.dataLicenca}
-                </DataQrCode>
-              </Col>
             </Row>
 
-
-            {/* Seção Licença */}
-            <div>
-              <LabelAdditionalInfo>
-                Licença
-              </LabelAdditionalInfo>
+            <div style={{ marginBottom: 10 }}>
               <Row gutter={12}>
                 <Col span={12}>
                   <BoxData>
                     <BoxLabel>Descrição / Caracterização:</BoxLabel>
-                    <BoxValue>{certificado.descricaoCaracterizacao}</BoxValue>
+                    <BoxValue>{displayCapitalized(certificado.descricaoCaracterizacao)}</BoxValue>
                   </BoxData>
                 </Col>
                 <Col span={6}>
                   <BoxData>
-                    <BoxLabel>Tipo:</BoxLabel>
-                    <BoxValue style={{ color: "#ff4d4f", fontWeight: 700, fontSize: "14px", justifyContent: "center" }}>
-                      {certificado.tipo}
-                    </BoxValue>
+                    <BoxLabel>Tipo / Type:</BoxLabel>
+                    <BoxValue style={{ color: "#c41d1d", fontWeight: 700, fontSize: 14 }}>{certificado.tipo}</BoxValue>
                   </BoxData>
                 </Col>
                 <Col span={6}>
                   <BoxData>
-                    <BoxLabel>Peso: Kg</BoxLabel>
+                    <BoxLabel>Peso / Weight: Kg:</BoxLabel>
                     <BoxValue>{certificado.peso}</BoxValue>
                   </BoxData>
                 </Col>
               </Row>
-              <BoxData>
-                <BoxLabel>Informações adicionais:</BoxLabel>
-                <BoxValue>{certificado.informacoesAdicionais}</BoxValue>
-              </BoxData>
-              <BoxValue>
-                As informações acima relatadas, são de inteira responsabilidade do declarante, devido a CMB não possuir um Técnico Avaliador.
+              {certificado.informacoesAdicionais && certificado.informacoesAdicionais.trim() !== "" && certificado.informacoesAdicionais !== "-" && (
+                <BoxData>
+                  <BoxLabel>Informações adicionais / Additional information:</BoxLabel>
+                  <BoxValue>{displayCapitalized(certificado.informacoesAdicionais)}</BoxValue>
+                </BoxData>
+              )}
+              <BoxValue style={{ fontSize: 12, color: "#595959", marginTop: 4 }}>
+                As informações acima relatadas, são de inteira responsabilidade do declarante, devido à cooperativa não possuir um Técnico Avaliador.
               </BoxValue>
             </div>
 
-            {/* Anexo */}
-            <LabelAdditionalInfo style={{ marginBottom: 10 }}>Anexo</LabelAdditionalInfo>
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <Image src="/esmelrada.jpg" alt="Anexo" width={200} height={180} unoptimized style={{ height: 180, width: "auto" }} />
+            <LabelAdditionalInfo style={{ marginBottom: 6 }}>Anexo</LabelAdditionalInfo>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginBottom: 12 }}>
+              {certificado.imageUrl ? (
+                <img src={certificado.imageUrl} alt="Anexo" style={{ maxWidth: 220, maxHeight: 165, objectFit: "contain" }} />
+              ) : (
+                <div style={{ width: 160, height: 120, backgroundColor: "#e8e8e8", borderRadius: 4 }} />
+              )}
             </div>
 
-            {/* Assinaturas */}
-            <Row gutter={20} style={{ marginTop: 60 }}>
+            <Row gutter={24} style={{ marginTop: 20 }}>
               <Col span={8}>
                 <BoxSignature>
                   <Signature>Declarante</Signature>
-                  <Signature>{certificado.nomeDeclarante}</Signature>
+                  <Signature>{displayCapitalized(certificado.nomeDeclarante)}</Signature>
                   <Signature>{certificado.cpfDeclarante}</Signature>
                 </BoxSignature>
               </Col>
               <Col span={8}>
                 <BoxSignature>
                   <Signature>Presidente</Signature>
-                  <Signature>{certificado.nomePresidente}</Signature>
+                  <Signature>{displayCapitalized(certificado.nomePresidente)}</Signature>
                 </BoxSignature>
               </Col>
               <Col span={8}>
@@ -419,7 +398,6 @@ const ViewCertificadoPage: React.FC = () => {
               </Col>
             </Row>
 
-            {/* Footer - Informações Legais */}
             <BoxLegalInfo>
               <BoxLegalInfoText>
                 <LegalInfo>Informações:</LegalInfo> BASE LEGAL: Circulação, Impostos e Taxas

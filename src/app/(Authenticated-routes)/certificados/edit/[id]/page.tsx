@@ -1,114 +1,28 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Button, Input, message } from "antd";
 import { useForm, Controller } from "react-hook-form";
-import { Button, Input, Upload, Space, Select } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
 import { HookFormInput, HookFormSelect } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
+import { getCertificateById, updateCertificate } from "../actions";
+import { getClientsByType } from "../../clientes/actions";
+import { getAllMiningSites } from "../../mineradoras/actions";
+import { getAllSubstances } from "../../substancias/actions";
+import { capitalizeWords } from "@/utils/capitalize";
+import { usePesoValorCalculo } from "@/hooks/usePesoValorCalculo";
 
-interface CertificadoFormValues {
-  // Informações da Cooperativa
-  cnpjCooperativa: string;
-  ieCooperativa: string;
-  enderecoCooperativa: string;
-  telefoneCooperativa: string;
-  codigoVerificacao: string;
-  
-  // Informações do Declarante/Cliente
-  nomeCliente: string;
-  razaoSocial: string;
-  cnpjCliente: string;
-  contatoCliente: string;
-  
-  // Informações de Endereço e Processo
-  enderecoCliente: string;
-  processoANM: string;
-  mineracao: string;
-  area: string;
-  
-  // Informações do Certificado
-  processosDNPM: string[];
-  licencaAmbiental: string;
-  dataLicenca: string;
-  
-  // Informações da Licença
-  descricaoCaracterizacao: string;
-  tipo: string;
-  peso: string;
-  informacoesAdicionais: string;
+function parseBrToNumber(value: string): number {
+  return Number(String(value).replace(/\./g, "").replace(",", ".")) || 0;
 }
-
-interface Certificado {
-  key: string;
-  id: string;
-  cliente: string;
-  descricao: string;
-  dataGerada: string;
-  valor: string;
-}
-
-// Dados de exemplo para selects
-const processosOptions: SelectOption[] = [
-  { value: "871.860/2006", label: "871.860/2006" },
-  { value: "871.861/2006", label: "871.861/2006" },
-  { value: "873.335/2006", label: "873.335/2006" },
-];
-
-const licencasOptions: SelectOption[] = [
-  { value: "INEMA 499 D.O.E", label: "INEMA 499 D.O.E" },
-  { value: "INEMA 500 D.O.E", label: "INEMA 500 D.O.E" },
-];
-
-// Dados de exemplo (mesmos da lista de certificados)
-const mockCertificados: Certificado[] = [
-  {
-    key: "1",
-    id: "3186",
-    cliente: "TIME INVEST ADMINISTRAÇÃO E PARTICIPAÇÕES EIRELI-ME",
-    descricao: "CANGA DE ESMERALDA",
-    dataGerada: "2026-01-21 15:48:37",
-    valor: "R$ 6.000,00",
-  },
-  {
-    key: "2",
-    id: "3185",
-    cliente: "YUSO ANTÔNIO VIEIRA COSTA",
-    descricao: "ESMERALDA BRUTA",
-    dataGerada: "2026-01-15 14:05:11",
-    valor: "R$ 1.260,00",
-  },
-  {
-    key: "3",
-    id: "3184",
-    cliente: "RICARDO NAZARENO CAMPELO SIQUEIRA",
-    descricao: "ESMERALDA BRUTA",
-    dataGerada: "2026-01-14 14:31:35",
-    valor: "R$ 1.000,00",
-  },
-  {
-    key: "4",
-    id: "3183",
-    cliente: "LEONARDO DA SILVA GOMES",
-    descricao: "ESMERALDA BRUTA",
-    dataGerada: "2026-01-14 14:07:51",
-    valor: "R$ 496,00",
-  },
-];
 
 const sectionStyle: React.CSSProperties = {
   backgroundColor: "#fafafa",
   padding: 24,
   borderRadius: 8,
   marginBottom: 24,
-};
-
-const gridRow3Style: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr",
-  gap: 16,
-  marginBottom: 16,
 };
 
 const gridRow2Style: React.CSSProperties = {
@@ -120,96 +34,132 @@ const gridRow2Style: React.CSSProperties = {
 
 const inputFullStyle: React.CSSProperties = { width: "100%" };
 
-const emptySpaceStyle: React.CSSProperties = {
-  width: "100%",
-  minHeight: 150,
-  border: "1px solid #d9d9d9",
-  borderRadius: 4,
-  backgroundColor: "#fafafa",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-// Função para mapear Certificado para CertificadoFormValues
-const mapCertificadoToFormValues = (certificado: Certificado): CertificadoFormValues => {
-  return {
-    cnpjCooperativa: "08.020.967/0001-47",
-    ieCooperativa: "69.031.374-NO",
-    enderecoCooperativa: "RUA PETROLINA, 215, SERRA DA CARNAIBA - PINDOBAÇU - BA Pindobaçu / BA - 44770-000",
-    telefoneCooperativa: "(74) 99961-1561",
-    codigoVerificacao: "697234fb70bb4",
-    nomeCliente: certificado.cliente || "",
-    razaoSocial: "PR BUSINESS",
-    cnpjCliente: "08.600.789/0001-23",
-    contatoCliente: "(77) 36127-021",
-    enderecoCliente: "FAZENDA BANDEIRA, 254, Gilbués / PI 64930-000",
-    processoANM: "871.860/2006",
-    mineracao: "MINAS DIVERSAS (871.860/2006)",
-    area: "894,00",
-    processosDNPM: ["871.860/2006", "871.861/2006", "873.335/2006"],
-    licencaAmbiental: "INEMA 499 D.O.E",
-    dataLicenca: "01/07/2011",
-    descricaoCaracterizacao: certificado.descricao || "",
-    tipo: "C",
-    peso: "3,46000",
-    informacoesAdicionais: certificado.descricao || "",
-  };
-};
+interface EditCertificadoFormValues {
+  cliente: string;
+  mineradora: string;
+  substancia: string;
+  categoria: string;
+  peso: string;
+  valorTotal: string;
+  descricao: string;
+  informacoesAdicionais: string;
+}
 
 const EditCertificadoPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [clientesOptions, setClientesOptions] = useState<SelectOption[]>([]);
+  const [mineradorasOptions, setMineradorasOptions] = useState<SelectOption[]>([]);
+  const [substanciasOptions, setSubstanciasOptions] = useState<SelectOption[]>([]);
 
-  const { control, handleSubmit, reset } = useForm<CertificadoFormValues>({
+  const pesoValorCalc = usePesoValorCalculo();
+
+  const { control, handleSubmit, setValue, reset } = useForm<EditCertificadoFormValues>({
     defaultValues: {
-      cnpjCooperativa: "",
-      ieCooperativa: "",
-      enderecoCooperativa: "",
-      telefoneCooperativa: "",
-      codigoVerificacao: "",
-      nomeCliente: "",
-      razaoSocial: "",
-      cnpjCliente: "",
-      contatoCliente: "",
-      enderecoCliente: "",
-      processoANM: "",
-      mineracao: "",
-      area: "",
-      processosDNPM: [],
-      licencaAmbiental: "",
-      dataLicenca: "",
-      descricaoCaracterizacao: "",
-      tipo: "",
-      peso: "",
+      cliente: "",
+      mineradora: "",
+      substancia: "",
+      categoria: "",
+      peso: "0,00000",
+      valorTotal: "0,00",
+      descricao: "",
       informacoesAdicionais: "",
     },
   });
 
-  useEffect(() => {
-    const fetchCertificadoData = () => {
-      setLoading(true);
-      
-      const certificado = mockCertificados.find((c) => c.id === id);
-      
-      if (certificado) {
-        const formData = mapCertificadoToFormValues(certificado);
-        reset(formData);
-      }
-      
-      setLoading(false);
-    };
-
-    if (id) {
-      fetchCertificadoData();
+  const loadOptions = useCallback(async () => {
+    try {
+      const [clients, sites, substances] = await Promise.all([
+        getClientsByType(1),
+        getAllMiningSites(),
+        getAllSubstances(),
+      ]);
+      setClientesOptions(
+        clients.map((c) => ({ value: String(c.id), label: capitalizeWords(c.name) }))
+      );
+      setMineradorasOptions(
+        sites.map((m) => ({ value: String(m.id), label: capitalizeWords(m.name) }))
+      );
+      setSubstanciasOptions(
+        substances.map((s) => ({ value: String(s.id), label: capitalizeWords(s.name) }))
+      );
+    } catch {
+      message.error("Falha ao carregar opções.");
     }
-  }, [id, reset]);
+  }, []);
 
-  const onSubmit = (data: CertificadoFormValues) => {
-    console.log("Atualizar certificado:", { id, ...data });
-    router.push("/certificados");
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([getCertificateById(Number(id)), loadOptions()])
+      .then(([cert]) => {
+        if (cancelled || !cert) return;
+        const pesoStr =
+          cert.weight != null
+            ? Number(cert.weight).toLocaleString("pt-BR", { minimumFractionDigits: 5 })
+            : "0,00000";
+        const valorStr =
+          cert.valTotal != null
+            ? Number(cert.valTotal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+            : "0,00";
+        reset({
+          cliente: String(cert.client_id),
+          mineradora: String(cert.miningSiteId),
+          substancia: cert.substanceId != null ? String(cert.substanceId) : "",
+          categoria: cert.productType ?? "",
+          peso: pesoStr,
+          valorTotal: valorStr,
+          descricao: cert.description ?? "",
+          informacoesAdicionais: cert.observation ?? "",
+        });
+        pesoValorCalc.setPeso(pesoStr);
+        pesoValorCalc.setValorTotal(valorStr);
+      })
+      .catch(() => {
+        if (!cancelled) message.error("Falha ao carregar certificado.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, loadOptions, reset]);
+
+  useEffect(() => {
+    setValue("peso", pesoValorCalc.peso);
+    setValue("valorTotal", pesoValorCalc.valorTotal);
+  }, [pesoValorCalc.peso, pesoValorCalc.valorTotal, setValue]);
+
+  const onSubmit = async (data: EditCertificadoFormValues) => {
+    setSubmitting(true);
+    try {
+      await updateCertificate(Number(id), {
+        client_id: Number(data.cliente),
+        miningSiteId: Number(data.mineradora),
+        substanceId: data.substancia ? Number(data.substancia) : null,
+        description: data.descricao || null,
+        productType: data.categoria || null,
+        weight: parseBrToNumber(data.peso),
+        observation: data.informacoesAdicionais || null,
+        valTotal: parseBrToNumber(data.valorTotal),
+      });
+      message.success("Certificado atualizado com sucesso.");
+      router.push("/certificados");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao atualizar certificado."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -218,216 +168,114 @@ const EditCertificadoPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ margin: "0 0 24px", fontSize: "24px", fontWeight: 600 }}>
-        Editar Certificado
-      </h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Button
+            type="default"
+            htmlType="button"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => router.push("/certificados")}
+          >
+            Voltar
+          </Button>
+          <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 600 }}>
+            Editar Certificado
+          </h1>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <section style={sectionStyle}>
-          <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
-            COOPERATIVA MINERAL DA BAHIA
-          </h2>
           <div style={gridRow2Style}>
-            <div>
-              <HookFormInput
-                name="cnpjCooperativa"
-                control={control}
-                label="CNPJ:"
-                style={inputFullStyle}
-              />
-              <HookFormInput
-                name="ieCooperativa"
-                control={control}
-                label="I.E:"
-                style={inputFullStyle}
-              />
-            </div>
-            <div>
-              <HookFormInput
-                name="enderecoCooperativa"
-                control={control}
-                label="Endereço:"
-                style={inputFullStyle}
-              />
-              <HookFormInput
-                name="telefoneCooperativa"
-                control={control}
-                label="Telefone:"
-                style={inputFullStyle}
-              />
-            </div>
-          </div>
-          <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ flex: 1 }}>
-              <HookFormInput
-                name="codigoVerificacao"
-                control={control}
-                label="Código de Verificação:"
-                style={inputFullStyle}
-              />
-            </div>
-            <div style={{ width: 150, marginLeft: 16 }}>
-              <label style={{ display: "block", marginBottom: 4 }}>QR Code:</label>
-              <div style={emptySpaceStyle}>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Três Colunas - Informações Principais */}
-        <section style={sectionStyle}>
-          <div style={gridRow3Style}>
-            {/* Coluna 1 - Informações do Cliente */}
-            <div>
-              <h3 style={{ margin: "0 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                NOME/NAME
-              </h3>
-              <HookFormInput
-                name="nomeCliente"
-                control={control}
-                style={inputFullStyle}
-              />
-              <h3 style={{ margin: "16px 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                RAZÃO SOCIAL/SOCIAL REASON
-              </h3>
-              <HookFormInput
-                name="razaoSocial"
-                control={control}
-                style={inputFullStyle}
-              />
-              <h3 style={{ margin: "16px 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                CNPJ
-              </h3>
-              <HookFormInput
-                name="cnpjCliente"
-                control={control}
-                style={inputFullStyle}
-              />
-              <h3 style={{ margin: "16px 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                CONTATO/CONTACT
-              </h3>
-              <HookFormInput
-                name="contatoCliente"
-                control={control}
-                style={inputFullStyle}
-              />
-            </div>
-
-            {/* Coluna 2 - Endereço e Processo */}
-            <div>
-              <h3 style={{ margin: "0 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                ENDEREÇO/ADDRESS
-              </h3>
-              <HookFormInput
-                name="enderecoCliente"
-                control={control}
-                style={inputFullStyle}
-              />
-              <h3 style={{ margin: "16px 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                PROCESSO/PROCESS ANM N°
-              </h3>
-              <HookFormInput
-                name="processoANM"
-                control={control}
-                style={inputFullStyle}
-              />
-              <h3 style={{ margin: "16px 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                MINERAÇÃO/MINING
-              </h3>
-              <HookFormInput
-                name="mineracao"
-                control={control}
-                style={inputFullStyle}
-              />
-              <h3 style={{ margin: "16px 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                ÁREA/AREA - ha
-              </h3>
-              <HookFormInput
-                name="area"
-                control={control}
-                style={inputFullStyle}
-              />
-            </div>
-
-            {/* Coluna 3 - Detalhes do Certificado */}
-            <div>
-              <h3 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: 600 }}>
-                Extração Mineral CERTIFICADO DE ORIGEM
-              </h3>
-              <p style={{ margin: "0 0 16px", fontSize: "12px" }}>
-                PLGs - Permissão de Lavra Garimpeira
-              </p>
-              <h3 style={{ margin: "0 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                Processos DNPM
-              </h3>
-              <Controller
-                name="processosDNPM"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <div>
-                    <Select
-                      {...field}
-                      mode="multiple"
-                      options={processosOptions}
-                      placeholder="Selecione os processos"
-                      style={inputFullStyle}
-                      status={fieldState.invalid ? "error" : undefined}
-                    />
-                    {fieldState.error?.message && (
-                      <span style={{ fontSize: 12, color: "#ff4d4f", marginTop: 4, display: "block" }}>
-                        {fieldState.error.message}
-                      </span>
-                    )}
-                  </div>
-                )}
-              />
-              <h3 style={{ margin: "16px 0 16px", fontSize: "14px", fontWeight: 600 }}>
-                LICENÇA AMBIENTAL
-              </h3>
-              <HookFormSelect
-                name="licencaAmbiental"
-                control={control}
-                options={licencasOptions}
-                placeholder="Selecione a licença"
-                style={inputFullStyle}
-              />
-              <HookFormInput
-                name="dataLicenca"
-                control={control}
-                label="Data:"
-                placeholder="DD/MM/AAAA"
-                style={inputFullStyle}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Seção Licença */}
-        <section style={sectionStyle}>
-          <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
-            Licença
-          </h2>
-          <div style={gridRow3Style}>
-            <HookFormInput
-              name="descricaoCaracterizacao"
+            <HookFormSelect
+              name="cliente"
               control={control}
-              label="Descrição / Caracterização:"
+              label="*Cliente:"
+              options={clientesOptions}
+              placeholder="Selecione um Cliente"
+              style={inputFullStyle}
+            />
+            <HookFormSelect
+              name="mineradora"
+              control={control}
+              label="*Mineradora:"
+              options={mineradorasOptions}
+              placeholder="Selecione uma Mineradora"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={gridRow2Style}>
+            <HookFormSelect
+              name="substancia"
+              control={control}
+              label="Substância:"
+              options={substanciasOptions}
+              placeholder="Selecione uma substância"
               style={inputFullStyle}
             />
             <HookFormInput
-              name="tipo"
+              name="categoria"
               control={control}
-              label="Tipo:"
+              label="Categoria:"
+              placeholder="Categoria do produto"
               style={inputFullStyle}
             />
-            <HookFormInput
+          </div>
+          <div style={gridRow2Style}>
+            <Controller
               name="peso"
               control={control}
-              label="Peso: Kg"
+              render={({ field }) => (
+                <div>
+                  <label style={{ display: "block", marginBottom: 4 }}>*Peso (Kg):</label>
+                  <Input
+                    value={pesoValorCalc.peso}
+                    onChange={(e) => {
+                      pesoValorCalc.handlePesoChange(e);
+                      field.onChange(e.target.value);
+                    }}
+                    placeholder="0,00000"
+                    style={inputFullStyle}
+                  />
+                </div>
+              )}
+            />
+            <Controller
+              name="valorTotal"
+              control={control}
+              render={({ field }) => (
+                <div>
+                  <label style={{ display: "block", marginBottom: 4 }}>*Valor total (R$):</label>
+                  <Input
+                    value={pesoValorCalc.valorTotal}
+                    onChange={(e) => {
+                      pesoValorCalc.handleValorTotalChange(e);
+                      field.onChange(e.target.value);
+                    }}
+                    placeholder="0,00"
+                    style={inputFullStyle}
+                  />
+                </div>
+              )}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <HookFormInput
+              name="descricao"
+              control={control}
+              label="Descrição:"
+              placeholder="Descrição"
               style={inputFullStyle}
             />
           </div>
-          <div style={{ marginTop: 16 }}>
+          <div>
             <Controller
               name="informacoesAdicionais"
               control={control}
@@ -436,37 +284,14 @@ const EditCertificadoPage: React.FC = () => {
                   <label style={{ display: "block", marginBottom: 4 }}>
                     Informações adicionais:
                   </label>
-                  <Input.TextArea
-                    {...field}
-                    rows={4}
-                  />
+                  <Input.TextArea {...field} placeholder="Observação" rows={4} />
                 </div>
               )}
             />
           </div>
         </section>
 
-        {/* Anexo */}
-        <section style={sectionStyle}>
-          <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
-            Anexo
-          </h3>
-          <Upload
-            listType="picture-card"
-            maxCount={1}
-            beforeUpload={() => false}
-          >
-            <div>
-              <UploadOutlined />
-              <div style={{ marginTop: 8 }}>Upload</div>
-            </div>
-          </Upload>
-        </section>
-
-        <Button
-          type="primary"
-          htmlType="submit"
-        >
+        <Button type="primary" htmlType="submit" loading={submitting}>
           Atualizar
         </Button>
       </form>

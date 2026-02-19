@@ -118,3 +118,28 @@ export async function apiDelete<T>(
 ): Promise<T> {
   return apiRequest<T>(endpoint, { method: 'DELETE' }, token);
 }
+
+export interface UploadResponse {
+  key: string;
+  url: string;
+  fileName: string;
+}
+
+export async function apiUploadFile(
+  endpoint: string,
+  formData: FormData,
+  token?: string | null
+): Promise<UploadResponse> {
+  const authToken = token !== undefined ? token : getToken();
+  const headers: HeadersInit = {};
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  const url = `${API_BASE_URL}${endpoint}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  return handleResponse<UploadResponse>(response);
+}

@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { UploadFile } from "antd";
 import { Alert, Button, Col, Input, message, Modal, Row, Select, Tooltip, Upload } from "antd";
-import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import { CrownOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
 import { HookFormInput, HookFormSelect, HookFormCpfInput, HookFormCnpjInput } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
 import {
@@ -21,6 +22,11 @@ import { getAllMiningSites } from "../../mineradoras/actions";
 import { getAllSubstances } from "../../substancias/actions";
 import { capitalizeWords } from "@/utils/capitalize";
 import { usePesoValorCalculo } from "@/hooks/usePesoValorCalculo";
+import { createCertificate } from "../actions";
+import { useRouter } from "next/navigation";
+import { useActiveMandate } from "@/contexts/active-mandate-context";
+import { apiUploadFile } from "@/lib/api-client";
+import { getToken } from "@/lib/auth";
 
 
 const quickDeclaranteOptions: SelectOption[] = [
@@ -63,7 +69,24 @@ const newDeclaranteButtonStyle: React.CSSProperties = {
   color: "#fff",
 };
 
+function parseBrToNumber(value: string): number {
+  return Number(String(value).replace(/\./g, "").replace(",", ".")) || 0;
+}
+
+function generateDisplayNumber(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const timestamp = String(now.getTime()).slice(-6);
+  return `CERT-${year}-${timestamp}`;
+}
+
+function generateVerificationCode(): string {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
+}
+
 const AddCertificadosPage: React.FC = () => {
+  const router = useRouter();
+  const { activeMandate, loading: activeMandateLoading } = useActiveMandate();
   const [isNewDeclaranteModalOpen, setIsNewDeclaranteModalOpen] = useState(false);
   const [clientesOptions, setClientesOptions] = useState<SelectOption[]>([]);
   const [declarantesGroupedOptions, setDeclarantesGroupedOptions] = useState<
@@ -74,6 +97,9 @@ const AddCertificadosPage: React.FC = () => {
   const [mineradorasLoading, setMineradorasLoading] = useState(false);
   const [substanciasOptions, setSubstanciasOptions] = useState<SelectOption[]>([]);
   const [substanciasLoading, setSubstanciasLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFileList, setImageFileList] = useState<UploadFile[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const pesoValorCalc = usePesoValorCalculo();
 
@@ -181,24 +207,61 @@ const AddCertificadosPage: React.FC = () => {
     return Number(data.declarante);
   };
 
-  const onSubmit = (data: CertificadoFormSchema) => {
+  const onSubmit = async (data: CertificadoFormSchema) => {
     const declaranteId = resolveDeclaranteId(data);
     if (declaranteId == null) return;
-    const payload = {
-      clienteId: Number(data.cliente),
-      declaranteId,
-      mineradoraId: Number(data.mineradora),
-      substanciaId: Number(data.substancia),
-      unidadeMedida: data.unidadeMedida,
-      categoria: data.categoria,
-      peso: data.peso,
-      valorPorPeso: data.valorPorPeso,
-      valorTotal: data.valorTotal,
-      descricao: data.descricao,
-      informacoesAdicionais: data.informacoesAdicionais,
-      descricaoImagem: data.descricaoImagem,
-    };
-    console.log("Salvar certificado:", payload);
+    if (activeMandateLoading) {
+      message.warning("Aguarde o carregamento do mandato ativo.");
+      return;
+    }
+    if (!activeMandate) {
+      message.error("Nenhum mandato ativo encontrado. Cadastre e ative um presidente.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let imageS3Key: string | undefined;
+      let imageFileName: string | undefined;
+      let imageDescription: string | undefined;
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("file", imageFile);
+        const uploadResult = await apiUploadFile(
+          "/storage/upload?folder=certificates",
+          formData,
+          getToken()
+        );
+        imageS3Key = uploadResult.key;
+        imageFileName = uploadResult.fileName;
+        imageDescription = data.descricaoImagem?.trim() || undefined;
+      }
+      await createCertificate({
+        mandateId: Number(activeMandate.id),
+        displayNumber: generateDisplayNumber(),
+        verificationCode: generateVerificationCode(),
+        client_id: Number(data.cliente),
+        miningSiteId: Number(data.mineradora),
+        substanceId: Number(data.substancia),
+        description: data.descricao,
+        productType: data.categoria,
+        weight: parseBrToNumber(data.peso),
+        unit: data.unidadeMedida,
+        observation: data.informacoesAdicionais,
+        valTotal: parseBrToNumber(data.valorTotal),
+        imageS3Key,
+        imageFileName,
+        imageDescription,
+      });
+      message.success("Certificado cadastrado com sucesso.");
+      router.push("/certificados");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Erro ao cadastrar certificado."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const newDeclaranteForm = useForm<NewDeclaranteFormSchema>({
@@ -460,6 +523,11 @@ const AddCertificadosPage: React.FC = () => {
               )}
             />
           </div>
+          {!activeMandateLoading && activeMandate && (
+            <div style={{ marginTop: 8, fontSize: 13, color: "#666", display: "flex", alignItems: "center", gap: 6 }}>
+              Presidente ativo: <CrownOutlined style={{ color: "#000" }} /> <strong>{capitalizeWords(activeMandate.presidentName ?? "Não informado")}</strong>
+            </div>
+          )}
         </section>
 
         <section style={sectionStyle}>
@@ -470,7 +538,13 @@ const AddCertificadosPage: React.FC = () => {
             <Upload
               listType="picture-card"
               maxCount={1}
+              fileList={imageFileList}
               beforeUpload={() => false}
+              onChange={({ fileList }) => {
+                setImageFileList(fileList.slice(-1));
+                const file = fileList[0]?.originFileObj as File | undefined;
+                setImageFile(file ?? null);
+              }}
             >
               <div>
                 <UploadOutlined />
@@ -492,6 +566,7 @@ const AddCertificadosPage: React.FC = () => {
         <Button
           type="primary"
           htmlType="submit"
+          loading={submitting}
         >
           Salvar
         </Button>

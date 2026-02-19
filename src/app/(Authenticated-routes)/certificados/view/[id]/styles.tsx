@@ -5,13 +5,22 @@ export const ContainerA4 = styled.div`
     display: flex;
     justify-content: center;
     width: 100%;
+    padding: 16px;
+    box-sizing: border-box;
 `;  
 
 export const A4SheetContainer = styled.div`
     width: 210mm;
-    height: 297mm;
-    overflow: hidden;
-    boxSizing: border-box;
+    min-height: 297mm;
+    box-sizing: border-box;
+    border-radius: 10px;
+    overflow: visible;
+    @media print {
+        width: 100%;
+        min-height: auto;
+        overflow: visible;
+        border-radius: 0;
+    }
 `;
 
 export const BoxButtons = styled.div`
@@ -37,33 +46,54 @@ export const BoxQrcodeImg = styled.div`
     align-items: center;
 `;
 
-export const CertificateQrcode = styled(Typography)`
+export const CertificateBlock = styled.div`
+    border: 1px solid #d9d9d9;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #262626;
+    line-height: 1.4;
+`;
+
+export const CertificateTitle = styled.div`
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    color: #262626;
+    margin-bottom: 2px;
+`;
+
+export const CertificateSubtitle = styled.div`
+    font-size: 12px;
+    text-align: center;
+    color: #595959;
+    margin-bottom: 8px;
+`;
+
+export const CertificateLabel = styled.div`
     font-size: 11px;
     font-weight: 600;
-    font-family: Roboto, sans-serif;
-    color: #797979;
-    text-align: center;
-    flex-shrink: 0;
+    color: #595959;
+    margin-top: 6px;
+    margin-bottom: 2px;
+`;
+
+export const CertificateValue = styled.div`
+    font-size: 12px;
+    color: #262626;
 `;
 
 export const TextQrCode = styled(Typography)`
-    font-size: 12px;
+    font-size: 13px;
     text-align: center;
-    color: #797979;
+    color: #262626;
     font-weight: 600;
-`;
-
-export const DataQrCode = styled(Typography)`
-    font-size: 10px;
-    color: #797979;
-    text-align: center;
 `;
 
 export const TextQrCodeBold = styled(Typography)`
     font-size: 12px;
     text-align: center;
     color: #8e000b;
-    font-weight: 600;
+    font-weight: 700;
 `;
 
 export const NameCooperativa = styled(Typography)`
@@ -77,12 +107,12 @@ export const BoxValueCooperativa = styled.div`
     display: flex;
     flex-wrap: nowrap;
     align-items: flex-start;
-    gap: 6px;
-    margin-bottom: 2px;
+    gap: 4px;
+    margin-bottom: 1px;
 `;
 
 export const LabelCooperativa = styled(Typography)`
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     font-family: Roboto, sans-serif;
     color: #797979;
@@ -101,23 +131,23 @@ export const ValueCooperativa = styled.span`
 `;
 
 export const BoxData = styled.div`
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 `;
 
 export const BoxLabel = styled.div`
     background-color: #f5f5f5;
-    padding: 6px 10px;
-    font-size: 11px;
+    padding: 5px 10px;
+    font-size: 12px;
     font-weight: 600;
     font-family: Roboto, sans-serif;
     color: #797979;
-    border-radius: 6px;
+    border-radius: 4px;
 `;
 
 export const BoxValue = styled.div`
     background-color: #ffffff;
-    padding: 8px 10px;
-    font-size: 11px;
+    padding: 5px 10px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     color: #7a7a7a;
@@ -125,13 +155,13 @@ export const BoxValue = styled.div`
 
 export const LabelAdditionalInfo = styled.div`
     text-align: center;
-    font-size: 12px;
+    font-size: 13px;
     background-color: #f5f5f5;
     font-family: Roboto, sans-serif;
     color: #797979;
-    margin-bottom: 12px;
-    padding: 6px 10px;
-    border-radius: 6px;
+    margin-bottom: 6px;
+    padding: 5px 10px;
+    border-radius: 4px;
 `;
 
 export const BoxSignature = styled.div`
@@ -140,45 +170,55 @@ export const BoxSignature = styled.div`
     align-items: center;
     justify-content: center;
     border-top: 1px solid #000;
-    padding-top: 6px;
+    padding-top: 4px;
 `;
 
 export const Signature = styled(Typography)`
-    font-size: 14px;
+    font-size: 13px;
     text-align: center;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     color: #6b6b6b;
 `;
 
 export const BoxLegalInfoText = styled.div`
-    font-size: 11px;
+    font-size: 12px;
     color: #797979;
 `;
 
 export const BoxLegalInfo = styled.div`
     color: #797979;
-    margin-top: 30px;
+    margin-top: 16px;
+    padding-bottom: 12px;
 `;
 
 export const LegalInfo = styled.strong`
-    font-size: 11px;
+    font-size: 12px;
     color: #7a7a7a;
 `;
 
 export const DateAndTime = styled.div`
-    font-size: 11px;
+    font-size: 12px;
     color: #797979;
     text-align: center;
 `;
 
 export const A4Sheet = styled.div`
     width: 210mm;
-    height: 297mm;
+    min-height: 297mm;
     margin: 0 auto;
-    padding: 30px;
+    padding: 18px 20px 20px;
     background-color: #ffffff;
     font-family: Arial, sans-serif;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
     position: relative;
+    border-radius: 10px;
+    @media print {
+        min-height: auto;
+        height: auto;
+        overflow: visible;
+        border-radius: 0;
+        padding: 12mm 15mm 15mm;
+        box-shadow: none;
+    }
 `;

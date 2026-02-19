@@ -1,12 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input } from "antd";
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
+import { Button, Space, Input, message, Modal } from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import { getAllCertificates, deleteCertificate } from "./actions";
+import { getClientsByType } from "../clientes/actions";
+import { capitalizeWords } from "@/utils/capitalize";
 
-interface Certificado {
+interface CertificadoRow {
   key: string;
   id: string;
   cliente: string;
@@ -17,46 +26,51 @@ interface Certificado {
 
 const CertificadosPage: React.FC = () => {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+  const [dataSource, setDataSource] = useState<CertificadoRow[]>([]);
+  const [clientNameMap, setClientNameMap] = useState<Record<number, string>>({});
 
-  // Dados de exemplo
-  const [dataSource, setDataSource] = useState<Certificado[]>([
-    {
-      key: "1",
-      id: "3186",
-      cliente: "TIME INVEST ADMINISTRAÇÃO E PARTICIPAÇÕES EIRELI-ME",
-      descricao: "CANGA DE ESMERALDA",
-      dataGerada: "2026-01-21 15:48:37",
-      valor: "R$ 6.000,00",
-    },
-    {
-      key: "2",
-      id: "3185",
-      cliente: "YUSO ANTÔNIO VIEIRA COSTA",
-      descricao: "ESMERALDA BRUTA",
-      dataGerada: "2026-01-15 14:05:11",
-      valor: "R$ 1.260,00",
-    },
-    {
-      key: "3",
-      id: "3184",
-      cliente: "RICARDO NAZARENO CAMPELO SIQUEIRA",
-      descricao: "ESMERALDA BRUTA",
-      dataGerada: "2026-01-14 14:31:35",
-      valor: "R$ 1.000,00",
-    },
-    {
-      key: "4",
-      id: "3183",
-      cliente: "LEONARDO DA SILVA GOMES",
-      descricao: "ESMERALDA BRUTA",
-      dataGerada: "2026-01-14 14:07:51",
-      valor: "R$ 496,00",
-    },
-  ]);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [certificates, clientsType1] = await Promise.all([
+        getAllCertificates(),
+        getClientsByType(1),
+      ]);
+      const map: Record<number, string> = {};
+      clientsType1.forEach((c) => {
+        map[c.id] = capitalizeWords(c.name ?? "");
+      });
+      setClientNameMap(map);
+      const rows: CertificadoRow[] = certificates.map((c) => ({
+        key: String(c.id),
+        id: String(c.id),
+        cliente: map[c.client_id] ?? String(c.client_id),
+        descricao: c.description ?? "",
+        dataGerada: c.createdAt
+          ? new Date(c.createdAt).toLocaleString("pt-BR")
+          : "",
+        valor:
+          c.valTotal != null
+            ? `R$ ${Number(c.valTotal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+            : "",
+      }));
+      setDataSource(rows);
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Falha ao carregar certificados."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const columns: TableColumn<Certificado>[] = [
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const columns: TableColumn<CertificadoRow>[] = [
     {
       title: "ID",
       dataIndex: "id",
@@ -105,8 +119,12 @@ const CertificadosPage: React.FC = () => {
       width: 150,
       align: "right",
       sorter: (a, b) => {
-        const aValue = parseFloat(a.valor.replace("R$ ", "").replace(".", "").replace(",", "."));
-        const bValue = parseFloat(b.valor.replace("R$ ", "").replace(".", "").replace(",", "."));
+        const aValue = parseFloat(
+          a.valor.replace("R$ ", "").replace(/\./g, "").replace(",", ".")
+        );
+        const bValue = parseFloat(
+          b.valor.replace("R$ ", "").replace(/\./g, "").replace(",", ".")
+        );
         return aValue - bValue;
       },
     },
@@ -120,12 +138,12 @@ const CertificadosPage: React.FC = () => {
           <Button
             type="link"
             icon={<EyeOutlined />}
-            onClick={() => handleView(record)}
+            onClick={() => router.push(`/certificados/view/${record.id}`)}
           />
           <Button
             type="link"
             icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
+            onClick={() => router.push(`/certificados/edit/${record.id}`)}
           />
           <Button
             type="link"
@@ -138,34 +156,37 @@ const CertificadosPage: React.FC = () => {
     },
   ];
 
-  const handleView = (record: Certificado) => {
-    router.push(`/certificados/view/${record.id}`);
-  };
-
-  const handleEdit = (record: Certificado) => {
-    router.push(`/certificados/edit/${record.id}`);
-  };
-
   const handleDelete = (id: string) => {
-    console.log("Excluir certificado:", id);
-    // Implementar lógica de exclusão
-    setDataSource(dataSource.filter((item) => item.id !== id));
+    Modal.confirm({
+      title: "Excluir certificado",
+      content: "Deseja realmente excluir este certificado?",
+      okText: "Excluir",
+      okType: "danger",
+      cancelText: "Cancelar",
+      onOk: async () => {
+        try {
+          await deleteCertificate(Number(id));
+          message.success("Certificado excluído com sucesso.");
+          await loadData();
+        } catch (error) {
+          message.error(
+            error instanceof Error
+              ? error.message
+              : "Falha ao excluir certificado."
+          );
+        }
+      },
+    });
   };
 
-  const handleAdd = () => {
-    router.push("/certificados/addcertificados");
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    // Implementar lógica de busca
-  };
-
-  // Filtrar dados baseado na busca
-  const filteredData = dataSource.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchText.toLowerCase())
-    )
+  const filteredData = useMemo(
+    () =>
+      dataSource.filter((item) =>
+        Object.values(item).some((val) =>
+          String(val).toLowerCase().includes(searchText.toLowerCase())
+        )
+      ),
+    [dataSource, searchText]
   );
 
   return (
@@ -187,12 +208,12 @@ const CertificadosPage: React.FC = () => {
             prefix={<SearchOutlined />}
             allowClear
             style={{ width: 300 }}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
           />
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={handleAdd}
+            onClick={() => router.push("/certificados/addcertificados")}
           >
             Novo Certificado
           </Button>

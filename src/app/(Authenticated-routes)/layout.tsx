@@ -17,10 +17,11 @@ import {
   CustomerServiceOutlined,
   DownOutlined,
 } from "@ant-design/icons";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { MenuProps } from "antd";
+import { ActiveMandateProvider } from "@/contexts/active-mandate-context";
 
 const { Sider, Content, Header } = Layout;
 
@@ -44,16 +45,13 @@ export default function AuthenticatedLayout({
     if (pathname?.includes("/processos")) return "processos";
     if (pathname?.includes("/substancias")) return "substancias";
     if (pathname?.includes("/certificados")) return "certificados";
+    if (pathname?.includes("/presidentes")) return "presidentes";
     if (pathname?.includes("/dados-empresa")) return "dados-empresa";
     if (pathname?.includes("/dashboard")) return "inicio";
     return "inicio";
   };
 
-  const [selectedKey, setSelectedKey] = useState(getSelectedKey());
-
-  useEffect(() => {
-    setSelectedKey(getSelectedKey());
-  }, [pathname]);
+  const selectedKey = getSelectedKey();
 
   const userMenuItems: MenuProps["items"] = [
     {
@@ -111,6 +109,11 @@ export default function AuthenticatedLayout({
       label: <Link href="/certificados">Certificados</Link>,
     },
     {
+      key: "presidentes",
+      icon: <UserOutlined />,
+      label: <Link href="/presidentes">Presidentes</Link>,
+    },
+    {
       key: "relatorios",
       icon: <FileTextOutlined />,
       label: "Relatórios",
@@ -149,7 +152,8 @@ export default function AuthenticatedLayout({
   ];
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <ActiveMandateProvider>
+      <Layout style={{ minHeight: "100vh" }}>
       <Sider
         collapsible
         collapsed={collapsed}
@@ -213,7 +217,6 @@ export default function AuthenticatedLayout({
           selectedKeys={[selectedKey]}
           items={menuItems}
           onClick={({ key }) => {
-            setSelectedKey(key as string);
             if (key === "clientes") {
               router.push("/clientes");
             } else if (key === "declarantes") {
@@ -228,6 +231,8 @@ export default function AuthenticatedLayout({
               router.push("/substancias");
             } else if (key === "certificados") {
               router.push("/certificados");
+            } else if (key === "presidentes") {
+              router.push("/presidentes");
             } else if (key === "dados-empresa") {
               router.push("/dados-empresa");
             } else if (key === "inicio") {
@@ -283,6 +288,7 @@ export default function AuthenticatedLayout({
           {children}
         </Content>
       </Layout>
-    </Layout>
+      </Layout>
+    </ActiveMandateProvider>
   );
 }
