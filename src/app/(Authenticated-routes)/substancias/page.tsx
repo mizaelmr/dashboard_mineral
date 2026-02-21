@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input, message } from "antd";
+import { Button, Space, Input, message, Tooltip } from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
@@ -95,11 +95,13 @@ const SubstânciasPage: React.FC = () => {
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => handleView(record)}
-          />
+          <Tooltip title="Taxas">
+            <Button
+              type="link"
+              icon={<EyeOutlined />}
+              onClick={() => handleView(record)}
+            />
+          </Tooltip>
           <Button
             type="link"
             icon={<EditOutlined />}

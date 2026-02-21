@@ -73,17 +73,6 @@ function parseBrToNumber(value: string): number {
   return Number(String(value).replace(/\./g, "").replace(",", ".")) || 0;
 }
 
-function generateDisplayNumber(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const timestamp = String(now.getTime()).slice(-6);
-  return `CERT-${year}-${timestamp}`;
-}
-
-function generateVerificationCode(): string {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
-}
-
 const AddCertificadosPage: React.FC = () => {
   const router = useRouter();
   const { activeMandate, loading: activeMandateLoading } = useActiveMandate();
@@ -238,8 +227,6 @@ const AddCertificadosPage: React.FC = () => {
       }
       await createCertificate({
         mandateId: Number(activeMandate.id),
-        displayNumber: generateDisplayNumber(),
-        verificationCode: generateVerificationCode(),
         client_id: Number(data.cliente),
         miningSiteId: Number(data.mineradora),
         substanceId: Number(data.substancia),
@@ -266,7 +253,7 @@ const AddCertificadosPage: React.FC = () => {
 
   const newDeclaranteForm = useForm<NewDeclaranteFormSchema>({
     resolver: zodResolver(newDeclaranteFormSchema),
-    defaultValues: { nome: "", cpf: "", razaoSocial: "", cnpj: "" },
+    defaultValues: { nome: "", cpf: "", razaoSocial: "", cnpj: "", phoneNumber: "" },
   });
 
   const handleOpenNewDeclaranteModal = () => setIsNewDeclaranteModalOpen(true);
@@ -618,6 +605,15 @@ const AddCertificadosPage: React.FC = () => {
               name="cnpj"
               control={newDeclaranteForm.control}
               label="CNPJ:"
+              style={inputFullStyle}
+            />
+          </div>
+          <div style={{ marginBottom: 24 }}>
+            <HookFormInput
+              name="phoneNumber"
+              control={newDeclaranteForm.control}
+              label="Telefone:"
+              placeholder="(00) 90000-0000"
               style={inputFullStyle}
             />
           </div>

@@ -13,6 +13,7 @@ import {
   CreateSubstanceDto,
   UpdateSubstanceDto,
 } from '@/types/substance';
+import { TaxRate, CreateTaxRateDto } from '@/types/tax-rate';
 
 async function getToken(): Promise<string | null> {
   const cookieStore = await cookies();
@@ -103,5 +104,44 @@ export async function deleteSubstance(id: number): Promise<void> {
       throw new Error(error.message);
     }
     throw new Error('Não foi possível excluir a substância.');
+  }
+}
+
+export async function getAllTaxRates(): Promise<TaxRate[]> {
+  try {
+    const token = await getToken();
+    return await apiGet<TaxRate[]>('/tax-rates', token);
+  } catch (error) {
+    if (error instanceof ApiClientError) {
+      throw new Error(error.message);
+    }
+    throw new Error('Não foi possível carregar os impostos.');
+  }
+}
+
+export async function createTaxRate(data: CreateTaxRateDto): Promise<TaxRate> {
+  try {
+    const token = await getToken();
+    return await apiPost<TaxRate>('/tax-rates', data, token);
+  } catch (error) {
+    if (error instanceof ApiClientError) {
+      throw new Error(error.message);
+    }
+    throw new Error('Não foi possível cadastrar o imposto.');
+  }
+}
+
+export async function deleteTaxRate(id: number): Promise<void> {
+  try {
+    const token = await getToken();
+    await apiDelete<void>(`/tax-rates/${id}`, token);
+  } catch (error) {
+    if (error instanceof ApiClientError) {
+      if (error.statusCode === 404) {
+        throw new Error('Imposto não encontrado.');
+      }
+      throw new Error(error.message);
+    }
+    throw new Error('Não foi possível excluir o imposto.');
   }
 }

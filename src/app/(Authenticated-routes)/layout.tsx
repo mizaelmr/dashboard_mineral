@@ -22,6 +22,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { MenuProps } from "antd";
 import { ActiveMandateProvider } from "@/contexts/active-mandate-context";
+import { removeToken } from "@/lib/auth";
 
 const { Sider, Content, Header } = Layout;
 
@@ -47,6 +48,7 @@ export default function AuthenticatedLayout({
     if (pathname?.includes("/certificados")) return "certificados";
     if (pathname?.includes("/presidentes")) return "presidentes";
     if (pathname?.includes("/dados-empresa")) return "dados-empresa";
+    if (pathname?.includes("/base-legal")) return "base-legal";
     if (pathname?.includes("/dashboard")) return "inicio";
     return "inicio";
   };
@@ -56,16 +58,23 @@ export default function AuthenticatedLayout({
   const userMenuItems: MenuProps["items"] = [
     {
       key: "minha-conta",
-      label: <a href="#">Minha Conta</a>,
+      label: "Minha Conta",
     },
     {
       type: "divider",
     },
     {
       key: "sair",
-      label: <a href="#">Sair</a>,
+      label: "Sair",
     },
   ];
+
+  const handleUserMenuClick: MenuProps["onClick"] = ({ key }) => {
+    if (key === "sair") {
+      removeToken();
+      router.push("/login");
+    }
+  };
 
   const menuItems: MenuProps["items"] = [
     {
@@ -82,6 +91,11 @@ export default function AuthenticatedLayout({
       key: "declarantes",
       icon: <UserOutlined />,
       label: <Link href="/declarantes">Declarantes</Link>,
+    },
+    {
+      key: "presidentes",
+      icon: <UserOutlined />,
+      label: <Link href="/presidentes">Presidentes</Link>,
     },
     {
       key: "licencas",
@@ -109,11 +123,6 @@ export default function AuthenticatedLayout({
       label: <Link href="/certificados">Certificados</Link>,
     },
     {
-      key: "presidentes",
-      icon: <UserOutlined />,
-      label: <Link href="/presidentes">Presidentes</Link>,
-    },
-    {
       key: "relatorios",
       icon: <FileTextOutlined />,
       label: "Relatórios",
@@ -135,7 +144,7 @@ export default function AuthenticatedLayout({
         {
           key: "base-legal",
           icon: <SafetyOutlined />,
-          label: <a href="#">Base Legal</a>,
+          label: <Link href="/base-legal">Base Legal</Link>,
         },
         {
           key: "dados-empresa",
@@ -235,6 +244,8 @@ export default function AuthenticatedLayout({
               router.push("/presidentes");
             } else if (key === "dados-empresa") {
               router.push("/dados-empresa");
+            } else if (key === "base-legal") {
+              router.push("/base-legal");
             } else if (key === "inicio") {
               router.push("/dashboard");
             }
@@ -263,7 +274,7 @@ export default function AuthenticatedLayout({
             }}
           />
           <Dropdown
-            menu={{ items: userMenuItems }}
+            menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
             trigger={["click"]}
             placement="bottomRight"
           >

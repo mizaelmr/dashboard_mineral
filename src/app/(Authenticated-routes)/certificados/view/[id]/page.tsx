@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Row, Col } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useReactToPrint } from "react-to-print";
+import QRCode from "qrcode";
 import {
   A4Sheet,
   A4SheetContainer,
+  A4SheetContent,
   BoxButtons,
   BoxButtonsActions,
   BoxData,
@@ -27,6 +28,12 @@ import {
   LegalInfo,
   NameCooperativa,
   Signature,
+  TaxRatesCell,
+  TaxRatesHeaderCell,
+  TaxRatesRow,
+  TaxRatesSection,
+  TaxRatesTable,
+  TaxRatesTitle,
   TextQrCode,
   TextQrCodeBold,
   ValueCooperativa,
@@ -37,10 +44,15 @@ import { getMandateById, getPresidentById } from "../../../presidentes/actions";
 import { getMiningSiteById } from "../../../mineradoras/actions";
 import { getProcessById } from "../../../processos/actions";
 import { getAllLicenses } from "../../../licencas/actions";
+import { getAllTaxRates } from "../../../substancias/actions";
 import { mockDadosEmpresa } from "../../../dados-empresa/page";
+import { getBaseLegalForCertificate } from "../../../base-legal/actions";
+import { DEFAULT_BASE_LEGAL } from "@/types/base-legal";
 import { capitalizeWords } from "@/utils/capitalize";
 import { formatDocument } from "@/utils/documents";
 import type { Client } from "@/types/client";
+import type { BaseLegalContent } from "@/types/base-legal";
+import type { TaxRate } from "@/types/tax-rate";
 
 function formatClientAddress(client: Client | null): string {
   if (!client?.address) return "-";
@@ -95,6 +107,8 @@ interface CertificadoDetalhes {
   cpfDeclarante: string;
   nomePresidente: string;
   imageUrl?: string | null;
+  substanceId: number | null;
+  substanceTaxRates: TaxRate[];
 }
 
 const ViewCertificadoPage: React.FC = () => {
@@ -103,7 +117,19 @@ const ViewCertificadoPage: React.FC = () => {
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
   const [certificado, setCertificado] = useState<CertificadoDetalhes | null>(null);
+  const [baseLegal, setBaseLegal] = useState<BaseLegalContent>(DEFAULT_BASE_LEGAL);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const componentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getBaseLegalForCertificate().then((content) => {
+      if (!cancelled) setBaseLegal(content);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,10 +147,14 @@ const ViewCertificadoPage: React.FC = () => {
           cert.miningSiteId ? getMiningSiteById(cert.miningSiteId).catch(() => null) : Promise.resolve(null),
           getAllLicenses().catch(() => []),
         ]);
+        const taxRates = await getAllTaxRates().catch(() => []);
         const [president, process] = await Promise.all([
           mandate?.presidentId ? getPresidentById(mandate.presidentId).catch(() => null) : Promise.resolve(null),
           miningSite?.processId ? getProcessById(miningSite.processId).catch(() => null) : Promise.resolve(null),
         ]);
+        const substanceTaxRates = cert.substanceId != null
+          ? taxRates.filter((taxRate) => Number(taxRate.substanceId) === Number(cert.substanceId))
+          : [];
         let imageUrl: string | null = null;
         if (cert.imageS3Key) {
           try {
@@ -168,6 +198,8 @@ const ViewCertificadoPage: React.FC = () => {
           cpfDeclarante: clientData ? formatDocument(clientData.documentNumber, clientData.documentType as "CPF" | "CNPJ") || "-" : "-",
           nomePresidente: president ? capitalizeWords(president.name ?? "") : "-",
           imageUrl,
+          substanceId: cert.substanceId ?? null,
+          substanceTaxRates,
         } as CertificadoDetalhes;
       })
       .then((data) => {
@@ -184,6 +216,28 @@ const ViewCertificadoPage: React.FC = () => {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!certificado?.codigoVerificacao || certificado.codigoVerificacao === "-") {
+      setQrCodeDataUrl("");
+      return;
+    }
+    QRCode.toDataURL(certificado.codigoVerificacao, {
+      width: 128,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
+      .then((dataUrl) => {
+        setQrCodeDataUrl(dataUrl);
+      })
+      .catch(() => {
+        setQrCodeDataUrl("");
+      });
+  }, [certificado?.codigoVerificacao]);
 
 
   const handlePrint = useReactToPrint({
@@ -237,11 +291,11 @@ const ViewCertificadoPage: React.FC = () => {
   return (
     <div>
       <BoxButtons>
-        <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
+        <Button type="default" icon={<ArrowLeftOutlined />} onClick={handleBack}>
           Voltar
         </Button>
         <BoxButtonsActions>
-          <Button type="primary" onClick={handlePrint}>
+          <Button type="default" onClick={handlePrint}>
             Imprimir
           </Button>
           <Button type="primary" onClick={handlePdf}>
@@ -255,6 +309,7 @@ const ViewCertificadoPage: React.FC = () => {
           ref={componentRef}
         >
           <A4Sheet>
+            <A4SheetContent>
             <Row gutter={20} style={{ marginBottom: 12, alignItems: "center", display: "flex", flexWrap: "nowrap" }}>
               <Col xs={24} md={6} style={{ display: "flex", justifyContent: "flex-start" }}>
                 <div style={{ width: 120, height: 48, backgroundColor: "#e8e8e8", borderRadius: 4 }} />
@@ -273,7 +328,11 @@ const ViewCertificadoPage: React.FC = () => {
               </Col>
               <Col xs={24} md={8} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
                 <BoxQrcodeImg>
-                  <Image src="/qrcode.png" alt="QR Code" width={64} height={64} unoptimized />
+                  {qrCodeDataUrl ? (
+                    <img src={qrCodeDataUrl} alt="QR Code" style={{ width: 64, height: 64 }} />
+                  ) : (
+                    <div style={{ width: 64, height: 64, backgroundColor: "#e8e8e8", borderRadius: 4 }} />
+                  )}
                 </BoxQrcodeImg>
                 <TextQrCode style={{ marginTop: 2 }}>{certificado.numeroCertificado}</TextQrCode>
                 <TextQrCodeBold>{certificado.codigoVerificacao}</TextQrCodeBold>
@@ -397,17 +456,33 @@ const ViewCertificadoPage: React.FC = () => {
                 </BoxSignature>
               </Col>
             </Row>
+            {baseLegal.showSubstanceTaxes && certificado.substanceTaxRates.length > 0 && (
+              <TaxRatesSection>
+                <TaxRatesTitle>Taxas da substância selecionada</TaxRatesTitle>
+                <TaxRatesTable>
+                  <TaxRatesRow>
+                    {certificado.substanceTaxRates.map((taxRate) => (
+                      <TaxRatesHeaderCell key={`tax-header-${taxRate.id}`}>
+                        {taxRate.name || "-"}
+                      </TaxRatesHeaderCell>
+                    ))}
+                  </TaxRatesRow>
+                  <TaxRatesRow>
+                    {certificado.substanceTaxRates.map((taxRate) => (
+                      <TaxRatesCell key={`tax-value-${taxRate.id}`}>
+                        {taxRate.value || "-"}
+                      </TaxRatesCell>
+                    ))}
+                  </TaxRatesRow>
+                </TaxRatesTable>
+              </TaxRatesSection>
+            )}
+            </A4SheetContent>
 
             <BoxLegalInfo>
-              <BoxLegalInfoText>
-                <LegalInfo>Informações:</LegalInfo> BASE LEGAL: Circulação, Impostos e Taxas
-              </BoxLegalInfoText>
-              <LegalInfo>
-                &quot;Valor aproximado correspondente à totalidade dos tributos federais, estaduais e municipais e taxa da CMB, em conformidade com o disposto na Lei nº 12741/2012: 12,90%&quot;
-              </LegalInfo>
-              <LegalInfo style={{ marginBottom: 4 }}>
-                Consulta de autenticidade do Certificado de origem informando o código de verificação através do site{" "}
-                <span style={{ textDecoration: "underline" }}>www.cooperativacmb.com.br</span>
+              <BoxLegalInfoText>{baseLegal.title}</BoxLegalInfoText>
+              <LegalInfo style={{ whiteSpace: "pre-line" }}>
+                {`${baseLegal.description} ${baseLegal.siteUrl}`.trim()}
               </LegalInfo>
               <DateAndTime>
                 {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })}{" "}

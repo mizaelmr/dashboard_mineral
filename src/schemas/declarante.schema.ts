@@ -7,6 +7,7 @@ export const newDeclaranteFormSchema = z
     cpf: z.string(),
     razaoSocial: z.string(),
     cnpj: z.string(),
+    phoneNumber: z.string(),
   })
   .superRefine((data, ctx) => {
     const nome = data.nome?.trim() ?? "";

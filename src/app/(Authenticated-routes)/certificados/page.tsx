@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Table, { TableColumn } from "@/components/Table";
-import { Button, Space, Input, message, Modal } from "antd";
+import { Button, Space, Input, message, Modal, Tooltip } from "antd";
 import {
   SearchOutlined,
   PlusOutlined,
@@ -29,7 +29,10 @@ const CertificadosPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
   const [dataSource, setDataSource] = useState<CertificadoRow[]>([]);
-  const [clientNameMap, setClientNameMap] = useState<Record<number, string>>({});
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -42,7 +45,6 @@ const CertificadosPage: React.FC = () => {
       clientsType1.forEach((c) => {
         map[c.id] = capitalizeWords(c.name ?? "");
       });
-      setClientNameMap(map);
       const rows: CertificadoRow[] = certificates.map((c) => ({
         key: String(c.id),
         id: String(c.id),
@@ -83,14 +85,14 @@ const CertificadosPage: React.FC = () => {
       title: "#ID",
       dataIndex: "id",
       key: "numero",
-      width: 100,
+      width: 90,
       sorter: (a, b) => parseInt(a.id) - parseInt(b.id),
     },
     {
       title: "Cliente",
       dataIndex: "cliente",
       key: "cliente",
-      width: 300,
+      width: 240,
       ellipsis: true,
       sorter: (a, b) => a.cliente.localeCompare(b.cliente),
     },
@@ -98,14 +100,14 @@ const CertificadosPage: React.FC = () => {
       title: "Descrição",
       dataIndex: "descricao",
       key: "descricao",
-      width: 200,
+      width: 160,
       sorter: (a, b) => a.descricao.localeCompare(b.descricao),
     },
     {
       title: "Data gerada",
       dataIndex: "dataGerada",
       key: "dataGerada",
-      width: 180,
+      width: 160,
       sorter: (a, b) => {
         const dateA = new Date(a.dataGerada.replace(" ", "T"));
         const dateB = new Date(b.dataGerada.replace(" ", "T"));
@@ -116,7 +118,7 @@ const CertificadosPage: React.FC = () => {
       title: "Valor",
       dataIndex: "valor",
       key: "valor",
-      width: 150,
+      width: 130,
       align: "right",
       sorter: (a, b) => {
         const aValue = parseFloat(
@@ -131,52 +133,70 @@ const CertificadosPage: React.FC = () => {
     {
       title: "Ações",
       key: "acoes",
-      width: 120,
-      fixed: "right",
+      width: 110,
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => router.push(`/certificados/view/${record.id}`)}
-          />
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => router.push(`/certificados/edit/${record.id}`)}
-          />
-          <Button
-            type="link"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-          />
+          <Tooltip title="Visualizar">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              style={{ color: "#1677ff" }}
+              onClick={() => router.push(`/certificados/view/${record.id}`)}
+            />
+          </Tooltip>
+          <Tooltip title="Editar">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              style={{ color: "#faad14" }}
+              onClick={() => router.push(`/certificados/edit/${record.id}`)}
+            />
+          </Tooltip>
+          <Tooltip title="Excluir">
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => openDeleteModal(record.id)}
+            />
+          </Tooltip>
         </Space>
       ),
     },
   ];
 
-  const handleDelete = (id: string) => {
-    Modal.confirm({
-      title: "Excluir certificado",
-      content: "Deseja realmente excluir este certificado?",
-      okText: "Excluir",
-      okType: "danger",
-      cancelText: "Cancelar",
-      onOk: async () => {
-        try {
-          await deleteCertificate(Number(id));
-          message.success("Certificado excluído com sucesso.");
-          await loadData();
-        } catch (error) {
-          message.error(
-            error instanceof Error
-              ? error.message
-              : "Falha ao excluir certificado."
-          );
-        }
-      },
-    });
+  const openDeleteModal = (id: string) => {
+    setPendingDeleteId(id);
+    setDeleteReason("");
+    setDeleteModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    const reason = deleteReason.trim();
+    if (!reason) {
+      message.warning("Informe o motivo do cancelamento para continuar.");
+      return;
+    }
+    if (!pendingDeleteId) {
+      setDeleteModalOpen(false);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteCertificate(Number(pendingDeleteId), reason);
+      message.success("Certificado cancelado com sucesso.");
+      setDeleteModalOpen(false);
+      setPendingDeleteId(null);
+      await loadData();
+    } catch (error) {
+      message.error(
+        error instanceof Error
+          ? error.message
+          : "Falha ao cancelar certificado."
+      );
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const filteredData = useMemo(
@@ -230,9 +250,35 @@ const CertificadosPage: React.FC = () => {
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} certificados`,
         }}
-        scroll={{ x: 1200 }}
         bordered
       />
+      <Modal
+        title="Cancelar certificado"
+        open={deleteModalOpen}
+        onCancel={() => {
+          if (deleting) return;
+          setDeleteModalOpen(false);
+        }}
+        onOk={handleDelete}
+        okText="Cancelar certificado"
+        cancelText="Fechar"
+        confirmLoading={deleting}
+        okButtonProps={{ danger: true, disabled: deleting }}
+      >
+        <p style={{ marginBottom: 12 }}>
+          Este certificado ficará cancelado e não aparecerá mais na listagem ativa.
+        </p>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
+          Motivo do cancelamento
+        </label>
+        <Input.TextArea
+          value={deleteReason}
+          onChange={(e) => setDeleteReason(e.target.value)}
+          rows={3}
+          maxLength={512}
+          placeholder="Ex: Certificado emitido com dados incorretos"
+        />
+      </Modal>
     </div>
   );
 };

@@ -109,26 +109,6 @@ const MineradorasPage: React.FC = () => {
       render: (text) => text || "-",
     },
     {
-      title: "Observação",
-      dataIndex: "observacao",
-      key: "observacao",
-      width: 120,
-      render: (observacao: string) => (
-        <span
-          style={{
-            padding: "4px 8px",
-            borderRadius: "4px",
-            backgroundColor:
-              observacao?.toUpperCase() === "ATIVA" ? "#f6ffed" : "#fff2e8",
-            color: observacao?.toUpperCase() === "ATIVA" ? "#52c41a" : "#fa8c16",
-            fontWeight: 500,
-          }}
-        >
-          {observacao || "-"}
-        </span>
-      ),
-    },
-    {
       title: "Ações",
       key: "acoes",
       width: 120,

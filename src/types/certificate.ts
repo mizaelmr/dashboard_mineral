@@ -23,8 +23,8 @@ export interface Certificate {
 
 export interface CreateCertificateDto {
   mandateId: number;
-  displayNumber: string;
-  verificationCode: string;
+  displayNumber?: string;
+  verificationCode?: string;
   client_id: number;
   miningSiteId: number;
   substanceId?: number;
@@ -41,6 +41,7 @@ export interface CreateCertificateDto {
 
 export interface UpdateCertificateDto {
   client_id?: number;
+  declarantUserId?: number | null;
   miningSiteId?: number;
   substanceId?: number | null;
   description?: string | null;

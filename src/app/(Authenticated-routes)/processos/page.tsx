@@ -111,13 +111,6 @@ const ProcessosPage: React.FC = () => {
       },
     },
     {
-      title: "Observação",
-      dataIndex: "observacao",
-      key: "observacao",
-      width: 200,
-      render: (text) => text || "-",
-    },
-    {
       title: "Ações",
       key: "acoes",
       width: 120,

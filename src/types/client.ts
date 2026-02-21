@@ -232,6 +232,7 @@ export interface NewDeclarantePayload {
   cpf: string;
   razaoSocial: string;
   cnpj: string;
+  phoneNumber: string;
 }
 
 export function mapNewDeclaranteToCreateDto(
@@ -242,6 +243,8 @@ export function mapNewDeclaranteToCreateDto(
   const cnpjDigits = stripDocument(data.cnpj);
   const razaoSocial = cleanLowerValue(data.razaoSocial);
 
+  const normalizedPhone = cleanLowerValue(data.phoneNumber);
+
   if (hasCnpj && cnpjDigits && razaoSocial) {
     return {
       type: 2,
@@ -249,6 +252,7 @@ export function mapNewDeclaranteToCreateDto(
       documentType: "CNPJ",
       documentNumber: cnpjDigits,
       legalName: razaoSocial,
+      contact: normalizedPhone ? { mobile: normalizedPhone } : undefined,
     };
   }
   return {
@@ -256,6 +260,7 @@ export function mapNewDeclaranteToCreateDto(
     name: cleanLowerValue(data.nome) ?? "",
     documentType: "CPF",
     documentNumber: cpfDigits,
+    contact: normalizedPhone ? { mobile: normalizedPhone } : undefined,
   };
 }
 

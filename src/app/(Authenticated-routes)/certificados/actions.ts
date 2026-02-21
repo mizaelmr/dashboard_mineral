@@ -14,6 +14,10 @@ import {
   UpdateCertificateDto,
 } from '@/types/certificate';
 
+export interface ReplaceCertificateDto extends UpdateCertificateDto {
+  cancelReason: string;
+}
+
 async function getToken(): Promise<string | null> {
   const cookieStore = await cookies();
   return cookieStore.get('auth_token')?.value || null;
@@ -81,10 +85,25 @@ export async function updateCertificate(
   }
 }
 
-export async function deleteCertificate(id: number): Promise<void> {
+export async function replaceCertificate(
+  id: number,
+  data: ReplaceCertificateDto,
+): Promise<Certificate> {
   try {
     const token = await getToken();
-    await apiDelete<void>(`/certificates/${id}`, token);
+    return await apiPatch<Certificate>(`/certificates/${id}/replace`, data, token);
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function deleteCertificate(
+  id: number,
+  cancelReason: string,
+): Promise<void> {
+  try {
+    const token = await getToken();
+    await apiDelete<void>(`/certificates/${id}`, { cancelReason }, token);
   } catch (error) {
     throw normalizeError(error);
   }

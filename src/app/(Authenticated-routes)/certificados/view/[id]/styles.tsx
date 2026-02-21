@@ -27,6 +27,9 @@ export const BoxButtons = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 210mm;
+    max-width: calc(100% - 32px);
+    margin: 0 auto;
     margin-bottom: 24px;
 `;
 
@@ -180,26 +183,79 @@ export const Signature = styled(Typography)`
     color: #6b6b6b;
 `;
 
-export const BoxLegalInfoText = styled.div`
+export const TaxRatesSection = styled.div`
+    margin-top: 8px;
+`;
+
+export const TaxRatesTitle = styled.div`
     font-size: 12px;
-    color: #797979;
+    color: #595959;
+    font-weight: 600;
+    margin-bottom: 6px;
+`;
+
+export const TaxRatesTable = styled.div`
+    display: inline-table;
+    border: 1px solid #ececec;
+    border-radius: 4px;
+    border-collapse: separate;
+    border-spacing: 0;
+    max-width: 100%;
+`;
+
+export const TaxRatesRow = styled.div`
+    display: table-row;
+`;
+
+export const TaxRatesCell = styled.div`
+    display: table-cell;
+    font-size: 11px;
+    color: #595959;
+    padding: 6px 8px;
+    white-space: nowrap;
+    border-bottom: 1px solid #f2f2f2;
+    border-right: 1px solid #f2f2f2;
+    &:last-child {
+        border-right: none;
+    }
+`;
+
+export const TaxRatesHeaderCell = styled(TaxRatesCell)`
+    font-weight: 600;
+    background-color: #fafafa;
+`;
+
+export const BoxLegalInfoText = styled.div`
+    font-size: 11px;
+    color: #595959;
+    margin: 0 6px 10px 6px;
+    line-height: 1.4;
 `;
 
 export const BoxLegalInfo = styled.div`
-    color: #797979;
-    margin-top: 16px;
-    padding-bottom: 12px;
+    color: #595959;
+    margin-top: auto;
+    padding-top: 24px;
+    padding-bottom: 16px;
 `;
 
-export const LegalInfo = styled.strong`
-    font-size: 12px;
-    color: #7a7a7a;
+export const LegalInfo = styled.p`
+    font-size: 11px;
+    color: #595959;
+    margin: 0 6px 10px 6px;
+    line-height: 1.4;
+    font-weight: 400;
 `;
 
 export const DateAndTime = styled.div`
-    font-size: 12px;
-    color: #797979;
+    font-size: 11px;
+    color: #8c8c8c;
     text-align: center;
+    margin-top: 14px;
+`;
+
+export const A4SheetContent = styled.div`
+    flex: 1;
 `;
 
 export const A4Sheet = styled.div`
@@ -213,6 +269,8 @@ export const A4Sheet = styled.div`
     overflow: visible;
     position: relative;
     border-radius: 10px;
+    display: flex;
+    flex-direction: column;
     @media print {
         min-height: auto;
         height: auto;

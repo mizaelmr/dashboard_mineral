@@ -114,9 +114,24 @@ export async function apiPatch<T>(
 
 export async function apiDelete<T>(
   endpoint: string,
+  dataOrToken?: unknown,
   token?: string | null
 ): Promise<T> {
-  return apiRequest<T>(endpoint, { method: 'DELETE' }, token);
+  const isTokenOnlyCall =
+    token === undefined &&
+    (typeof dataOrToken === 'string' || dataOrToken === null);
+  const requestData = isTokenOnlyCall ? undefined : dataOrToken;
+  const requestToken = isTokenOnlyCall
+    ? (dataOrToken as string | null | undefined)
+    : token;
+  return apiRequest<T>(
+    endpoint,
+    {
+      method: 'DELETE',
+      body: requestData ? JSON.stringify(requestData) : undefined,
+    },
+    requestToken
+  );
 }
 
 export interface UploadResponse {
