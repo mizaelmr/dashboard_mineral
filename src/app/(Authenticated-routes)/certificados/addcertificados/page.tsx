@@ -40,6 +40,15 @@ const unidadesMedidaOptions: SelectOption[] = [
   { value: "g", label: "G - Gramas" },
 ];
 
+const tipoTransporteOptions: SelectOption[] = [
+  { value: "terrestre", label: "Terrestre" },
+  { value: "aereo", label: "Aéreo" },
+  { value: "fluvial", label: "Fluvial" },
+  { value: "maritimo", label: "Marítimo" },
+  { value: "ferroviario", label: "Ferroviário" },
+  { value: "multimodal", label: "Multimodal" },
+];
+
 const sectionStyle: React.CSSProperties = {
   backgroundColor: "#fff",
   padding: 24,
@@ -174,6 +183,8 @@ const AddCertificadosPage: React.FC = () => {
       descricao: "",
       informacoesAdicionais: "",
       descricaoImagem: "",
+      destino: "",
+      tipoTransporte: "",
     },
   });
 
@@ -236,6 +247,8 @@ const AddCertificadosPage: React.FC = () => {
         unit: data.unidadeMedida,
         observation: data.informacoesAdicionais,
         valTotal: parseBrToNumber(data.valorTotal),
+        destination: data.destino?.trim() || undefined,
+        transportType: data.tipoTransporte || undefined,
         imageS3Key,
         imageFileName,
         imageDescription,
@@ -515,6 +528,33 @@ const AddCertificadosPage: React.FC = () => {
               Presidente ativo: <CrownOutlined style={{ color: "#000" }} /> <strong>{capitalizeWords(activeMandate.presidentName ?? "Não informado")}</strong>
             </div>
           )}
+        </section>
+
+        <section style={sectionStyle}>
+          <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
+            Rastreabilidade:
+          </h3>
+          <Row gutter={16}>
+            <Col span={14}>
+              <HookFormInput
+                name="destino"
+                control={control}
+                label="Destino:"
+                placeholder="Ex: São Paulo - SP"
+                style={inputFullStyle}
+              />
+            </Col>
+            <Col span={10}>
+              <HookFormSelect
+                name="tipoTransporte"
+                control={control}
+                label="Tipo de transporte:"
+                options={tipoTransporteOptions}
+                placeholder="Selecione o transporte"
+                style={inputFullStyle}
+              />
+            </Col>
+          </Row>
         </section>
 
         <section style={sectionStyle}>

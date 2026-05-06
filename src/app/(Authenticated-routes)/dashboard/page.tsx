@@ -175,90 +175,95 @@ export default function Dashboard() {
         Início
       </h1>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="Certificados"
-              value={stats?.totalCertificates ?? 0}
-              prefix={<FileTextOutlined />}
-            />
-          </Card>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }} align="stretch">
+        <Col xs={24} lg={14} xl={18}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Card loading={loading}>
+                <Statistic
+                  title="Certificados"
+                  value={stats?.totalCertificates ?? 0}
+                  prefix={<FileTextOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Card loading={loading}>
+                <Statistic
+                  title="Clientes"
+                  value={stats?.totalClients ?? 0}
+                  prefix={<TeamOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Card loading={loading} title="Valor (certificados)">
+                <Statistic
+                  title="Este mês"
+                  value={stats?.totalValueThisMonth ?? 0}
+                  prefix={<DollarOutlined />}
+                  formatter={(value) => formatCurrency(Number(value))}
+                  valueStyle={{ fontSize: "1.5rem", fontWeight: 600 }}
+                />
+                <div style={{ marginTop: 8, fontSize: "0.875rem", color: "var(--ant-color-text-secondary)" }}>
+                  Total geral: {formatCurrency(stats?.totalValueAllTime ?? 0)}
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Card loading={mandateLoading} title="Mandato ativo">
+                {activeMandate ? (
+                  <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                    <span>
+                      <UserOutlined />{" "}
+                      {activeMandate.presidentName
+                        ? capitalizeWords(activeMandate.presidentName)
+                        : "—"}
+                    </span>
+                    <span>
+                      <CalendarOutlined />{" "}
+                      {formatDateOnly(activeMandate.startedAt)}
+                      {activeMandate.endedAt
+                        ? ` – ${formatDateOnly(activeMandate.endedAt)}`
+                        : " (em vigor)"}
+                    </span>
+                  </Space>
+                ) : (
+                  <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                    Nenhum mandato ativo
+                  </span>
+                )}
+              </Card>
+            </Col>
+          </Row>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="Clientes"
-              value={stats?.totalClients ?? 0}
-              prefix={<TeamOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading} title="Valor (certificados)">
-            <Statistic
-              title="Este mês"
-              value={stats?.totalValueThisMonth ?? 0}
-              prefix={<DollarOutlined />}
-              formatter={(value) => formatCurrency(Number(value))}
-              valueStyle={{ fontSize: "1.5rem", fontWeight: 600 }}
-            />
-            <div style={{ marginTop: 8, fontSize: "0.875rem", color: "var(--ant-color-text-secondary)" }}>
-              Total geral: {formatCurrency(stats?.totalValueAllTime ?? 0)}
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={mandateLoading} title="Mandato ativo">
-            {activeMandate ? (
-              <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                <span>
-                  <UserOutlined />{" "}
-                  {activeMandate.presidentName
-                    ? capitalizeWords(activeMandate.presidentName)
-                    : "—"}
-                </span>
-                <span>
-                  <CalendarOutlined />{" "}
-                  {formatDateOnly(activeMandate.startedAt)}
-                  {activeMandate.endedAt
-                    ? ` – ${formatDateOnly(activeMandate.endedAt)}`
-                    : " (em vigor)"}
-                </span>
-              </Space>
-            ) : (
-              <span style={{ color: "var(--ant-color-text-secondary)" }}>
-                Nenhum mandato ativo
-              </span>
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} md={12}>
-          <Card title="Ações rápidas">
-            <Space wrap>
+        <Col xs={24} lg={10} xl={6}>
+          <Card title="Ações rápidas" style={{ height: "100%" }}>
+            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
               <Button
                 type="primary"
+                block
                 icon={<PlusOutlined />}
                 onClick={() => router.push("/certificados/addcertificados")}
               >
                 Novo certificado
               </Button>
               <Button
+                block
                 icon={<TeamOutlined />}
                 onClick={() => router.push("/clientes")}
               >
                 Clientes
               </Button>
               <Button
+                block
                 icon={<FileTextOutlined />}
                 onClick={() => router.push("/relatorios/clientes")}
               >
                 Relatório clientes
               </Button>
               <Button
+                block
                 icon={<BankOutlined />}
                 onClick={() => router.push("/presidentes")}
               >

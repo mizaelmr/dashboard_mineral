@@ -55,6 +55,8 @@ interface EditCertificadoFormValues {
   weight: number;
   observation: string | null;
   valTotal: number;
+  destination: string | null;
+  transportType: string | null;
 }
 
 const quickDeclaranteOptions: SelectOption[] = [
@@ -66,6 +68,15 @@ const unidadesMedidaOptions: SelectOption[] = [
   { value: "kg", label: "Kg - Quilogramas" },
   { value: "ct", label: "Ct - Quilates" },
   { value: "g", label: "G - Gramas" },
+];
+
+const tipoTransporteOptions: SelectOption[] = [
+  { value: "terrestre", label: "Terrestre" },
+  { value: "aereo", label: "Aéreo" },
+  { value: "fluvial", label: "Fluvial" },
+  { value: "maritimo", label: "Marítimo" },
+  { value: "ferroviario", label: "Ferroviário" },
+  { value: "multimodal", label: "Multimodal" },
 ];
 
 const newDeclaranteButtonStyle: React.CSSProperties = {
@@ -118,6 +129,8 @@ const EditCertificadoPage: React.FC = () => {
       descricao: "",
       informacoesAdicionais: "",
       descricaoImagem: "",
+      destino: "",
+      tipoTransporte: "",
     },
   });
 
@@ -215,6 +228,8 @@ const EditCertificadoPage: React.FC = () => {
           descricao: cert.description ?? "",
           informacoesAdicionais: cert.observation ?? "",
           descricaoImagem: "",
+          destino: cert.destination ?? "",
+          tipoTransporte: cert.transportType ?? "",
         });
         pesoValorCalc.setPeso(pesoStr);
         pesoValorCalc.setValorPorPeso(valorPorPesoStr);
@@ -248,6 +263,8 @@ const EditCertificadoPage: React.FC = () => {
       weight: parseBrToNumber(data.peso),
       observation: data.informacoesAdicionais || null,
       valTotal: parseBrToNumber(data.valorTotal),
+      destination: data.destino?.trim() || null,
+      transportType: data.tipoTransporte || null,
     });
     setCancelReason("");
     setReplaceModalOpen(true);
@@ -575,6 +592,33 @@ const EditCertificadoPage: React.FC = () => {
               )}
             />
           </div>
+        </section>
+
+        <section style={sectionStyle}>
+          <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
+            Rastreabilidade:
+          </h3>
+          <Row gutter={16}>
+            <Col span={14}>
+              <HookFormInput
+                name="destino"
+                control={control}
+                label="Destino:"
+                placeholder="Ex: São Paulo - SP"
+                style={inputFullStyle}
+              />
+            </Col>
+            <Col span={10}>
+              <HookFormSelect
+                name="tipoTransporte"
+                control={control}
+                label="Tipo de transporte:"
+                options={tipoTransporteOptions}
+                placeholder="Selecione o transporte"
+                style={inputFullStyle}
+              />
+            </Col>
+          </Row>
         </section>
 
         <Button type="primary" htmlType="submit" loading={submitting}>

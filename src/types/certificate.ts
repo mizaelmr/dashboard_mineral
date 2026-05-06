@@ -15,6 +15,8 @@ export interface Certificate {
   unit?: string | null;
   observation?: string | null;
   valTotal?: number | null;
+  destination?: string | null;
+  transportType?: string | null;
   createdAt?: string;
   updatedAt?: string;
   imageS3Key?: string;
@@ -34,6 +36,8 @@ export interface CreateCertificateDto {
   unit?: string;
   observation?: string;
   valTotal?: number;
+  destination?: string;
+  transportType?: string;
   imageS3Key?: string;
   imageFileName?: string;
   imageDescription?: string;
@@ -50,4 +54,6 @@ export interface UpdateCertificateDto {
   unit?: string | null;
   observation?: string | null;
   valTotal?: number | null;
+  destination?: string | null;
+  transportType?: string | null;
 }

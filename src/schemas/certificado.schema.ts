@@ -30,6 +30,8 @@ export const certificadoFormSchema = z
     descricao: z.string().min(1, "Descrição é obrigatória"),
     informacoesAdicionais: z.string(),
     descricaoImagem: z.string(),
+    destino: z.string().optional(),
+    tipoTransporte: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.declarante === "" || data.declarante === "new_declarante") {

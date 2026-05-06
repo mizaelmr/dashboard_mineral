@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button, Row, Col } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Button, Row, Col, Modal } from "antd";
+import { ArrowLeftOutlined, EnvironmentOutlined } from "@ant-design/icons";
+import MiningMap from "@/components/MiningMap";
 import { useReactToPrint } from "react-to-print";
 import QRCode from "qrcode";
 import {
@@ -109,6 +110,10 @@ interface CertificadoDetalhes {
   imageUrl?: string | null;
   substanceId: number | null;
   substanceTaxRates: TaxRate[];
+  latitude: number | null;
+  longitude: number | null;
+  destination: string | null;
+  transportType: string | null;
 }
 
 const ViewCertificadoPage: React.FC = () => {
@@ -119,6 +124,7 @@ const ViewCertificadoPage: React.FC = () => {
   const [certificado, setCertificado] = useState<CertificadoDetalhes | null>(null);
   const [baseLegal, setBaseLegal] = useState<BaseLegalContent>(DEFAULT_BASE_LEGAL);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
+  const [mapOpen, setMapOpen] = useState(false);
   const componentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -200,6 +206,10 @@ const ViewCertificadoPage: React.FC = () => {
           imageUrl,
           substanceId: cert.substanceId ?? null,
           substanceTaxRates,
+          latitude: miningSite?.latitude != null ? Number(miningSite.latitude) : null,
+          longitude: miningSite?.longitude != null ? Number(miningSite.longitude) : null,
+          destination: cert.destination ?? null,
+          transportType: cert.transportType ?? null,
         } as CertificadoDetalhes;
       })
       .then((data) => {
@@ -295,6 +305,14 @@ const ViewCertificadoPage: React.FC = () => {
           Voltar
         </Button>
         <BoxButtonsActions>
+          {certificado.latitude != null && certificado.longitude != null && (
+            <Button
+              icon={<EnvironmentOutlined />}
+              onClick={() => setMapOpen(true)}
+            >
+              Ver no mapa
+            </Button>
+          )}
           <Button type="default" onClick={handlePrint}>
             Imprimir
           </Button>
@@ -304,7 +322,24 @@ const ViewCertificadoPage: React.FC = () => {
         </BoxButtonsActions>
       </BoxButtons>
 
-      <ContainerA4 >
+      <Modal
+        title={`Localização da lavra: ${certificado.mineracao}`}
+        open={mapOpen}
+        onCancel={() => setMapOpen(false)}
+        footer={null}
+        width={700}
+        destroyOnHidden
+      >
+        {certificado.latitude != null && certificado.longitude != null && (
+          <MiningMap
+            latitude={certificado.latitude}
+            longitude={certificado.longitude}
+            label={certificado.mineracao}
+          />
+        )}
+      </Modal>
+
+      <ContainerA4>
         <A4SheetContainer
           ref={componentRef}
         >
@@ -425,6 +460,29 @@ const ViewCertificadoPage: React.FC = () => {
                 As informações acima relatadas, são de inteira responsabilidade do declarante, devido à cooperativa não possuir um Técnico Avaliador.
               </BoxValue>
             </div>
+
+            {(certificado.destination || certificado.transportType) && (
+              <div style={{ marginBottom: 10 }}>
+                <Row gutter={12}>
+                  {certificado.destination && (
+                    <Col span={certificado.transportType ? 14 : 24}>
+                      <BoxData>
+                        <BoxLabel>Destino / Destination:</BoxLabel>
+                        <BoxValue>{displayCapitalized(certificado.destination)}</BoxValue>
+                      </BoxData>
+                    </Col>
+                  )}
+                  {certificado.transportType && (
+                    <Col span={certificado.destination ? 10 : 24}>
+                      <BoxData>
+                        <BoxLabel>Tipo de transporte / Transport type:</BoxLabel>
+                        <BoxValue>{displayCapitalized(certificado.transportType)}</BoxValue>
+                      </BoxData>
+                    </Col>
+                  )}
+                </Row>
+              </div>
+            )}
 
             <LabelAdditionalInfo style={{ marginBottom: 6 }}>Anexo</LabelAdditionalInfo>
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginBottom: 12 }}>

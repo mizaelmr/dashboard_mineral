@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button, Descriptions } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Button, Descriptions, Modal } from "antd";
+import { ArrowLeftOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import { getMiningSiteById, getAllProcesses } from "../../actions";
 import { MiningSite } from "@/types/mining-site";
 import { capitalizeWords } from "@/utils/capitalize";
+import MiningMap from "@/components/MiningMap";
 
 const sectionStyle: React.CSSProperties = {
   backgroundColor: "#fafafa",
@@ -22,6 +23,7 @@ const ViewMineradoraPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [mineradora, setMineradora] = useState<MiningSite | null>(null);
   const [processNumber, setProcessNumber] = useState<string>("");
+  const [mapOpen, setMapOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -95,10 +97,34 @@ const ViewMineradoraPage: React.FC = () => {
             Detalhes da Mineradora
           </h1>
         </div>
-        <Button type="primary" onClick={handleEdit}>
-          Editar Mineradora
-        </Button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {mineradora.latitude != null && mineradora.longitude != null && (
+            <Button icon={<EnvironmentOutlined />} onClick={() => setMapOpen(true)}>
+              Ver no mapa
+            </Button>
+          )}
+          <Button type="primary" onClick={handleEdit}>
+            Editar Mineradora
+          </Button>
+        </div>
       </div>
+
+      <Modal
+        title={`Localização: ${capitalizeWords(mineradora.name)}`}
+        open={mapOpen}
+        onCancel={() => setMapOpen(false)}
+        footer={null}
+        width={700}
+        destroyOnHidden
+      >
+        {mineradora.latitude != null && mineradora.longitude != null && (
+          <MiningMap
+            latitude={Number(mineradora.latitude)}
+            longitude={Number(mineradora.longitude)}
+            label={capitalizeWords(mineradora.name)}
+          />
+        )}
+      </Modal>
 
       <section style={sectionStyle}>
         <Descriptions bordered column={1}>
@@ -134,6 +160,13 @@ const ViewMineradoraPage: React.FC = () => {
               "Não informado"
             )}
           </Descriptions.Item>
+          {(mineradora.latitude != null || mineradora.longitude != null) && (
+            <Descriptions.Item label="Coordenadas">
+              {mineradora.latitude != null ? `Lat: ${mineradora.latitude}` : ""}
+              {mineradora.latitude != null && mineradora.longitude != null ? " | " : ""}
+              {mineradora.longitude != null ? `Lng: ${mineradora.longitude}` : ""}
+            </Descriptions.Item>
+          )}
         </Descriptions>
       </section>
     </div>

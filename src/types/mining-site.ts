@@ -17,6 +17,8 @@ export interface MiningSite {
   name: string;
   concessionNumber?: string | null;
   observation?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
@@ -27,6 +29,8 @@ export interface CreateMiningSiteDto {
   name: string;
   concessionNumber?: string;
   observation?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface UpdateMiningSiteDto {
@@ -34,6 +38,8 @@ export interface UpdateMiningSiteDto {
   name?: string;
   concessionNumber?: string | null;
   observation?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface MiningSiteTableRow {
