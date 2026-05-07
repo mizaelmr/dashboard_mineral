@@ -15,6 +15,7 @@ export interface LoginResponse {
     name: string;
     role: string;
     tenant_id: number;
+    tenant_name: string;
   };
 }
 

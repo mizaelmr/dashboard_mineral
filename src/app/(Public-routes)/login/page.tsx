@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Checkbox, Form, message, Input } from "antd";
-import Image from "next/image";
 import {
   BoxLogin,
   ButtonLogin,
@@ -15,6 +14,7 @@ import {
 } from "./style";
 import { login } from "./actions";
 import { setToken } from "@/lib/auth";
+import { OrigemMineralLogo } from "@/components/OrigemMineralLogo";
 
 interface LoginFormValues {
   email: string;
@@ -36,6 +36,7 @@ const FormLogin = () => {
       });
       
       setToken(response.accessToken);
+      localStorage.setItem('auth_user', JSON.stringify(response.user));
       message.success("Login successful!");
       router.push("/dashboard");
     } catch (error) {
@@ -49,7 +50,7 @@ const FormLogin = () => {
 
   return (
     <BoxLogin>
-      <Image src="/logo_login.png" alt="Logo Mineral" width={193} height={81} />
+      <OrigemMineralLogo color="#1a1a1a" size={80} />
       <Title>COOPERATIVA MINERAL DA BAHIA</Title>
       <Form
         form={form}
