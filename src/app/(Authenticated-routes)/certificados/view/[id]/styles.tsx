@@ -33,6 +33,16 @@ export const BoxButtons = styled.div`
     margin-bottom: 24px;
 `;
 
+/* Utilitários de impressão */
+export const PrintOnly = styled.div`
+    display: none;
+    @media print { display: block; }
+`;
+
+export const NoPrint = styled.div`
+    @media print { display: none !important; }
+`;
+
 export const BoxButtonsActions = styled.div`
     display: flex;
     gap: 10px;  

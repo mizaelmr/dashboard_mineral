@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button, Row, Col, Modal } from "antd";
 import { ArrowLeftOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import MiningMap from "@/components/MiningMap";
+import RouteMap from "@/components/RouteMap";
 import { useReactToPrint } from "react-to-print";
 import QRCode from "qrcode";
 import {
@@ -38,6 +39,8 @@ import {
   TextQrCode,
   TextQrCodeBold,
   ValueCooperativa,
+  NoPrint,
+  PrintOnly,
 } from "./styles";
 import { getCertificateById, getStorageSignedUrl } from "../../actions";
 import { getClientById } from "../../../clientes/actions";
@@ -113,6 +116,10 @@ interface CertificadoDetalhes {
   latitude: number | null;
   longitude: number | null;
   destination: string | null;
+  destinationCity: string | null;
+  destinationState: string | null;
+  destinationLat: number | null;
+  destinationLng: number | null;
   transportType: string | null;
 }
 
@@ -125,6 +132,7 @@ const ViewCertificadoPage: React.FC = () => {
   const [baseLegal, setBaseLegal] = useState<BaseLegalContent>(DEFAULT_BASE_LEGAL);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
+  const [routeMapOpen, setRouteMapOpen] = useState(false);
   const componentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -209,6 +217,10 @@ const ViewCertificadoPage: React.FC = () => {
           latitude: miningSite?.latitude != null ? Number(miningSite.latitude) : null,
           longitude: miningSite?.longitude != null ? Number(miningSite.longitude) : null,
           destination: cert.destination ?? null,
+          destinationCity: cert.destinationCity ?? null,
+          destinationState: cert.destinationState ?? null,
+          destinationLat: cert.destinationLat != null ? Number(cert.destinationLat) : null,
+          destinationLng: cert.destinationLng != null ? Number(cert.destinationLng) : null,
           transportType: cert.transportType ?? null,
         } as CertificadoDetalhes;
       })
@@ -306,11 +318,14 @@ const ViewCertificadoPage: React.FC = () => {
         </Button>
         <BoxButtonsActions>
           {certificado.latitude != null && certificado.longitude != null && (
-            <Button
-              icon={<EnvironmentOutlined />}
-              onClick={() => setMapOpen(true)}
-            >
-              Ver no mapa
+            <Button icon={<EnvironmentOutlined />} onClick={() => setMapOpen(true)}>
+              Ver lavra
+            </Button>
+          )}
+          {certificado.latitude != null && certificado.longitude != null &&
+           certificado.destinationLat != null && certificado.destinationLng != null && (
+            <Button icon={<EnvironmentOutlined />} onClick={() => setRouteMapOpen(true)}>
+              Ver rota
             </Button>
           )}
           <Button type="default" onClick={handlePrint}>
@@ -335,6 +350,31 @@ const ViewCertificadoPage: React.FC = () => {
             latitude={certificado.latitude}
             longitude={certificado.longitude}
             label={certificado.mineracao}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        title="Rota: Lavra → Destino"
+        open={routeMapOpen}
+        onCancel={() => setRouteMapOpen(false)}
+        footer={null}
+        width={760}
+        destroyOnHidden
+      >
+        {certificado.latitude != null && certificado.longitude != null &&
+         certificado.destinationLat != null && certificado.destinationLng != null && (
+          <RouteMap
+            origin={{
+              lat: certificado.latitude,
+              lng: certificado.longitude,
+              label: certificado.mineracao,
+            }}
+            destination={{
+              lat: certificado.destinationLat,
+              lng: certificado.destinationLng,
+              label: certificado.destination ?? `${certificado.destinationCity ?? ""}, ${certificado.destinationState ?? ""}`,
+            }}
           />
         )}
       </Modal>
@@ -463,6 +503,40 @@ const ViewCertificadoPage: React.FC = () => {
 
             {(certificado.destination || certificado.transportType) && (
               <div style={{ marginBottom: 10 }}>
+                {/* Indicador de rota — clicável na tela, só texto na impressão */}
+                {certificado.latitude != null && certificado.destinationLat != null && (
+                  <>
+                    {/* Versão clicável — oculta na impressão */}
+                    <NoPrint style={{ marginBottom: 8 }}>
+                      <span
+                        onClick={() => setRouteMapOpen(true)}
+                        style={{
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          backgroundColor: "#e6f4ff",
+                          border: "1px solid #91caff",
+                          fontSize: 12,
+                          color: "#1677ff",
+                        }}
+                      >
+                        <EnvironmentOutlined style={{ color: "#52c41a" }} />
+                        <span style={{ color: "#595959" }}>{displayCapitalized(certificado.mineracao)}</span>
+                        <span style={{ color: "#1677ff", fontWeight: 600 }}>→</span>
+                        <EnvironmentOutlined style={{ color: "#ff4d4f" }} />
+                        <span style={{ color: "#595959" }}>{displayCapitalized(certificado.destination ?? "")}</span>
+                        <span style={{ color: "#8c8c8c", fontSize: 11 }}>(clique para ver rota)</span>
+                      </span>
+                    </NoPrint>
+                    {/* Versão só-impressão */}
+                    <PrintOnly style={{ marginBottom: 8, fontSize: 11, color: "#595959" }}>
+                      Origem: {certificado.mineracao} → Destino: {certificado.destination}
+                    </PrintOnly>
+                  </>
+                )}
                 <Row gutter={12}>
                   {certificado.destination && (
                     <Col span={certificado.transportType ? 14 : 24}>

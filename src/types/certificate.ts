@@ -16,6 +16,10 @@ export interface Certificate {
   observation?: string | null;
   valTotal?: number | null;
   destination?: string | null;
+  destinationCity?: string | null;
+  destinationState?: string | null;
+  destinationLat?: number | null;
+  destinationLng?: number | null;
   transportType?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -28,6 +32,7 @@ export interface CreateCertificateDto {
   displayNumber?: string;
   verificationCode?: string;
   client_id: number;
+  declarantUserId?: number;
   miningSiteId: number;
   substanceId?: number;
   description?: string;
@@ -37,6 +42,10 @@ export interface CreateCertificateDto {
   observation?: string;
   valTotal?: number;
   destination?: string;
+  destinationCity?: string;
+  destinationState?: string;
+  destinationLat?: number;
+  destinationLng?: number;
   transportType?: string;
   imageS3Key?: string;
   imageFileName?: string;
@@ -55,5 +64,9 @@ export interface UpdateCertificateDto {
   observation?: string | null;
   valTotal?: number | null;
   destination?: string | null;
+  destinationCity?: string | null;
+  destinationState?: string | null;
+  destinationLat?: number | null;
+  destinationLng?: number | null;
   transportType?: string | null;
 }

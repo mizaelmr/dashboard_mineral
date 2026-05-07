@@ -8,6 +8,8 @@ import { Alert, Button, Col, Input, Modal, Row, Select, Tooltip, message } from 
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { HookFormCnpjInput, HookFormCpfInput, HookFormInput, HookFormSelect } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
+import DestinationPicker from "@/components/DestinationPicker";
+import type { DestinationValue } from "@/components/DestinationPicker";
 import { getCertificateById, replaceCertificate } from "../../actions";
 import { createClient, getClientsByType } from "../../../clientes/actions";
 import { getAllMiningSites } from "../../../mineradoras/actions";
@@ -47,6 +49,7 @@ const isStructuralFieldsLocked = true;
 
 interface EditCertificadoFormValues {
   client_id: number;
+  declarantUserId: number | null;
   miningSiteId: number;
   substanceId: number | null;
   unit: string | null;
@@ -56,6 +59,10 @@ interface EditCertificadoFormValues {
   observation: string | null;
   valTotal: number;
   destination: string | null;
+  destinationCity: string | null;
+  destinationState: string | null;
+  destinationLat: number | null;
+  destinationLng: number | null;
   transportType: string | null;
 }
 
@@ -99,6 +106,7 @@ const EditCertificadoPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isNewDeclaranteModalOpen, setIsNewDeclaranteModalOpen] = useState(false);
+  const [destinationValue, setDestinationValue] = useState<DestinationValue | null>(null);
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [pendingReplacePayload, setPendingReplacePayload] = useState<EditCertificadoFormValues | null>(null);
@@ -231,6 +239,15 @@ const EditCertificadoPage: React.FC = () => {
           destino: cert.destination ?? "",
           tipoTransporte: cert.transportType ?? "",
         });
+        if (cert.destinationLat != null && cert.destinationLng != null) {
+          setDestinationValue({
+            city: cert.destinationCity ?? "",
+            state: cert.destinationState ?? "",
+            lat: Number(cert.destinationLat),
+            lng: Number(cert.destinationLng),
+            display: cert.destination ?? `${cert.destinationCity ?? ""}, ${cert.destinationState ?? ""}`,
+          });
+        }
         pesoValorCalc.setPeso(pesoStr);
         pesoValorCalc.setValorPorPeso(valorPorPesoStr);
         pesoValorCalc.setValorTotal(valorStr);
@@ -252,9 +269,16 @@ const EditCertificadoPage: React.FC = () => {
     setValue("valorTotal", pesoValorCalc.valorTotal);
   }, [pesoValorCalc.peso, pesoValorCalc.valorPorPeso, pesoValorCalc.valorTotal, setValue]);
 
+  const resolveDeclaranteId = (data: CertificadoFormSchema): number | null => {
+    if (data.declarante === "same_as_client") return data.cliente ? Number(data.cliente) : null;
+    if (data.declarante === "new_declarante" || data.declarante === "") return null;
+    return Number(data.declarante);
+  };
+
   const onSubmit = async (data: CertificadoFormSchema) => {
     setPendingReplacePayload({
       client_id: Number(data.cliente),
+      declarantUserId: resolveDeclaranteId(data),
       miningSiteId: Number(data.mineradora),
       substanceId: data.substancia ? Number(data.substancia) : null,
       unit: data.unidadeMedida || null,
@@ -263,7 +287,11 @@ const EditCertificadoPage: React.FC = () => {
       weight: parseBrToNumber(data.peso),
       observation: data.informacoesAdicionais || null,
       valTotal: parseBrToNumber(data.valorTotal),
-      destination: data.destino?.trim() || null,
+      destination: destinationValue?.display || data.destino?.trim() || null,
+      destinationCity: destinationValue?.city || null,
+      destinationState: destinationValue?.state || null,
+      destinationLat: destinationValue?.lat ?? null,
+      destinationLng: destinationValue?.lng ?? null,
       transportType: data.tipoTransporte || null,
     });
     setCancelReason("");
@@ -598,17 +626,17 @@ const EditCertificadoPage: React.FC = () => {
           <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
             Rastreabilidade:
           </h3>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+              Destino:
+            </label>
+            <DestinationPicker
+              value={destinationValue}
+              onChange={setDestinationValue}
+            />
+          </div>
           <Row gutter={16}>
-            <Col span={14}>
-              <HookFormInput
-                name="destino"
-                control={control}
-                label="Destino:"
-                placeholder="Ex: São Paulo - SP"
-                style={inputFullStyle}
-              />
-            </Col>
-            <Col span={10}>
+            <Col span={24}>
               <HookFormSelect
                 name="tipoTransporte"
                 control={control}

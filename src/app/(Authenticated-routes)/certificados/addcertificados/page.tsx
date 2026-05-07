@@ -8,6 +8,8 @@ import { Alert, Button, Col, Input, message, Modal, Row, Select, Tooltip, Upload
 import { CrownOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
 import { HookFormInput, HookFormSelect, HookFormCpfInput, HookFormCnpjInput } from "@/components/hook-forms";
 import type { SelectOption } from "@/components/hook-forms";
+import DestinationPicker from "@/components/DestinationPicker";
+import type { DestinationValue } from "@/components/DestinationPicker";
 import {
   newDeclaranteFormSchema,
   type NewDeclaranteFormSchema,
@@ -93,6 +95,7 @@ const AddCertificadosPage: React.FC = () => {
   const [clientsLoading, setClientsLoading] = useState(false);
   const [mineradorasOptions, setMineradorasOptions] = useState<SelectOption[]>([]);
   const [mineradorasLoading, setMineradorasLoading] = useState(false);
+  const [destinationValue, setDestinationValue] = useState<DestinationValue | null>(null);
   const [substanciasOptions, setSubstanciasOptions] = useState<SelectOption[]>([]);
   const [substanciasLoading, setSubstanciasLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -239,6 +242,7 @@ const AddCertificadosPage: React.FC = () => {
       await createCertificate({
         mandateId: Number(activeMandate.id),
         client_id: Number(data.cliente),
+        declarantUserId: declaranteId,
         miningSiteId: Number(data.mineradora),
         substanceId: Number(data.substancia),
         description: data.descricao,
@@ -247,7 +251,11 @@ const AddCertificadosPage: React.FC = () => {
         unit: data.unidadeMedida,
         observation: data.informacoesAdicionais,
         valTotal: parseBrToNumber(data.valorTotal),
-        destination: data.destino?.trim() || undefined,
+        destination: destinationValue?.display || data.destino?.trim() || undefined,
+        destinationCity: destinationValue?.city || undefined,
+        destinationState: destinationValue?.state || undefined,
+        destinationLat: destinationValue?.lat ?? undefined,
+        destinationLng: destinationValue?.lng ?? undefined,
         transportType: data.tipoTransporte || undefined,
         imageS3Key,
         imageFileName,
@@ -534,17 +542,17 @@ const AddCertificadosPage: React.FC = () => {
           <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
             Rastreabilidade:
           </h3>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+              Destino:
+            </label>
+            <DestinationPicker
+              value={destinationValue}
+              onChange={setDestinationValue}
+            />
+          </div>
           <Row gutter={16}>
-            <Col span={14}>
-              <HookFormInput
-                name="destino"
-                control={control}
-                label="Destino:"
-                placeholder="Ex: São Paulo - SP"
-                style={inputFullStyle}
-              />
-            </Col>
-            <Col span={10}>
+            <Col span={24}>
               <HookFormSelect
                 name="tipoTransporte"
                 control={control}
