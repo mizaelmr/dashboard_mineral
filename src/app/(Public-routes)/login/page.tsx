@@ -36,6 +36,7 @@ const FormLogin = () => {
       });
       
       setToken(response.accessToken);
+      localStorage.setItem('auth_user', JSON.stringify(response.user));
       message.success("Login successful!");
       router.push("/dashboard");
     } catch (error) {

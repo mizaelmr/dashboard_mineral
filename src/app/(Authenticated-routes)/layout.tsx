@@ -17,7 +17,7 @@ import {
   CustomerServiceOutlined,
   DownOutlined,
 } from "@ant-design/icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { MenuProps } from "antd";
@@ -34,6 +34,14 @@ export default function AuthenticatedLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [authUser, setAuthUser] = useState<{ name: string; tenant_name: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('auth_user');
+      if (raw) setAuthUser(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   // Determinar a chave selecionada baseada no pathname
   const getSelectedKey = () => {
@@ -72,6 +80,7 @@ export default function AuthenticatedLayout({
   const handleUserMenuClick: MenuProps["onClick"] = ({ key }) => {
     if (key === "sair") {
       removeToken();
+      localStorage.removeItem('auth_user');
       router.push("/login");
     }
   };
@@ -213,7 +222,7 @@ export default function AuthenticatedLayout({
                   lineHeight: "1.2",
                 }}
               >
-                COOPERATIVA MINERAL DA BAHIA
+                {authUser?.tenant_name?.toUpperCase() ?? ''}
               </div>
             </>
           )}
@@ -289,13 +298,13 @@ export default function AuthenticatedLayout({
             >
               <Avatar icon={<UserOutlined />} />
               <span style={{ color: "#595959", fontSize: "14px" }}>
-                Mizael Rodrigo Barreto Duarte
+                {authUser?.name ?? ''}
               </span>
               <DownOutlined style={{ color: "#595959", fontSize: "12px" }} />
             </div>
           </Dropdown>
         </Header>
-        <Content style={{ margin: "24px 16px", padding: 24, minHeight: 280 }}>
+        <Content style={{ padding: 24, minHeight: 280 }}>
           {children}
         </Content>
       </Layout>
