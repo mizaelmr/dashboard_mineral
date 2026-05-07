@@ -240,7 +240,7 @@ const CertificadosPage: React.FC = () => {
         </Space>
       </div>
 
-      <Table<Certificado>
+      <Table<CertificadoRow>
         columns={columns}
         dataSource={filteredData}
         loading={loading}
