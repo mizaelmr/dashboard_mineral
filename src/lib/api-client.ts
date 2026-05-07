@@ -47,13 +47,15 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const authToken = token !== undefined ? token : getToken();
 
-  const headers: HeadersInit = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
+  });
+  if (options.headers) {
+    const overrides = new Headers(options.headers);
+    overrides.forEach((value, key) => headers.set(key, value));
+  }
   if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+    headers.set('Authorization', `Bearer ${authToken}`);
   }
 
   const url = `${API_BASE_URL}${endpoint}`;
@@ -146,9 +148,9 @@ export async function apiUploadFile(
   token?: string | null
 ): Promise<UploadResponse> {
   const authToken = token !== undefined ? token : getToken();
-  const headers: HeadersInit = {};
+  const headers = new Headers();
   if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+    headers.set('Authorization', `Bearer ${authToken}`);
   }
   const url = `${API_BASE_URL}${endpoint}`;
   const response = await fetch(url, {
