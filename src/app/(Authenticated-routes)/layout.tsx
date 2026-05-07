@@ -212,7 +212,7 @@ export default function AuthenticatedLayout({
                   marginBottom: "4px",
                 }}
               >
-                CMB
+                Origem Mineral
               </div>
               <div
                 style={{
