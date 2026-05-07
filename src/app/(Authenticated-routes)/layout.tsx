@@ -23,6 +23,7 @@ import Link from "next/link";
 import type { MenuProps } from "antd";
 import { ActiveMandateProvider } from "@/contexts/active-mandate-context";
 import { removeToken } from "@/lib/auth";
+import { OrigemMineralLogo } from "@/components/OrigemMineralLogo";
 
 const { Sider, Content, Header } = Layout;
 
@@ -192,18 +193,11 @@ export default function AuthenticatedLayout({
             alignItems: "center",
           }}
         >
-          {!collapsed && (
+          {collapsed ? (
+            <OrigemMineralLogo color="white" size={36} />
+          ) : (
             <>
-              {/* Espaço para logo */}
-              <div
-                style={{
-                  width: "80px",
-                  height: "60px",
-                  marginBottom: "8px",
-                  backgroundColor: "rgba(255, 255, 255, 0.1)",
-                  borderRadius: "4px",
-                }}
-              />
+              <OrigemMineralLogo color="white" size={56} />
               <div
                 style={{
                   fontSize: "20px",
